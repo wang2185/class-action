@@ -50,7 +50,6 @@ export function setupAuth(app: Express) {
             .limit(1);
 
           if (!user) {
-            // Timing-attack prevention
             await bcrypt.hash("dummy", BCRYPT_ROUNDS);
             return done(null, false, { message: "이메일 또는 비밀번호가 올바르지 않습니다." });
           }
@@ -79,6 +78,23 @@ export function setupAuth(app: Express) {
     } catch (err) {
       done(err);
     }
+  });
+}
+
+// 로그인 시 세션 재생성 (Session Fixation 방지)
+export function loginWithSessionRegeneration(req: Request, user: any): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const passportData = (req.session as any).passport;
+    req.session.regenerate((err) => {
+      if (err) return reject(err);
+      req.login(user, (loginErr) => {
+        if (loginErr) return reject(loginErr);
+        req.session.save((saveErr) => {
+          if (saveErr) return reject(saveErr);
+          resolve();
+        });
+      });
+    });
   });
 }
 

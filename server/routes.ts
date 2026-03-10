@@ -7,7 +7,8 @@ import {
   billingKeys,
 } from "../shared/schema";
 import { eq, desc, and, sql, count } from "drizzle-orm";
-import { requireAuth, requireAdmin, hashPassword } from "./auth";
+import { requireAuth, requireAdmin, hashPassword, loginWithSessionRegeneration } from "./auth";
+import { encryptPII } from "./crypto";
 import { upload, deleteFile } from "./storage";
 import {
   createPaymentSession, validatePaymentCallback,
@@ -56,14 +57,16 @@ export function registerRoutes(app: Express) {
   });
 
   app.post("/api/auth/login", (req: Request, res: Response, next) => {
-    passport.authenticate("local", (err: any, user: any, info: any) => {
+    passport.authenticate("local", async (err: any, user: any, info: any) => {
       if (err) return next(err);
       if (!user) return res.status(401).json({ error: info?.message || "로그인 실패" });
-      req.login(user, (loginErr) => {
-        if (loginErr) return next(loginErr);
+      try {
+        await loginWithSessionRegeneration(req, user);
         const { password: _, ...safeUser } = user;
         return res.json(safeUser);
-      });
+      } catch (loginErr) {
+        return next(loginErr);
+      }
     })(req, res, next);
   });
 
@@ -186,7 +189,7 @@ export function registerRoutes(app: Express) {
         phone: phone || (req.user as any).phone,
         email: email || (req.user as any).email,
         address,
-        residentNumber, // TODO: 암호화
+        residentNumber: residentNumber ? encryptPII(residentNumber) : null,
         damageAmount: damageAmount ? parseInt(damageAmount) : null,
         damageDescription,
       }).returning();
