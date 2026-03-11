@@ -5,6 +5,7 @@ import { paymentSessions, paymentTransactions, caseParties } from "../shared/sch
 import { eq } from "drizzle-orm";
 
 const NICEPAY_API_URL = "https://webapi.nicepay.co.kr";
+const NICEPAY_WEB_URL = "https://web.nicepay.co.kr";
 const SESSION_TTL_MIN = 30;
 
 // ─── 이중 MID 설정 ───
@@ -28,6 +29,9 @@ function isTestMode(mid: string): boolean {
 }
 function getApiBase(mid: string): string {
   return isTestMode(mid) ? "https://sandbox.nicepay.co.kr" : NICEPAY_API_URL;
+}
+function getWebBase(mid: string): string {
+  return isTestMode(mid) ? "https://sandbox.nicepay.co.kr" : NICEPAY_WEB_URL;
 }
 
 function getEdiDate(): string {
@@ -191,7 +195,7 @@ export function generatePaymentFormHTML(params: {
 <head><meta charset="euc-kr"><title>결제 진행중...</title></head>
 <body onload="document.getElementById('payForm').submit()">
 <p style="text-align:center;margin-top:100px;font-family:sans-serif;">결제 페이지로 이동 중입니다...</p>
-<form id="payForm" method="POST" action="${getApiBase(params.merchantId)}/v3/v3Payment.jsp" accept-charset="euc-kr">
+<form id="payForm" method="POST" action="${getWebBase(params.merchantId)}/v3/v3Payment.jsp" accept-charset="euc-kr">
   <input type="hidden" name="PayMethod" value="CARD" />
   <input type="hidden" name="GoodsName" value="${goodsNameEncoded}" />
   <input type="hidden" name="Amt" value="${params.amount}" />
