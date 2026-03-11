@@ -22,6 +22,7 @@ import AdminCaseForm from "./pages/admin/CaseForm";
 import AdminParties from "./pages/admin/Parties";
 import AdminCaseUpdate from "./pages/admin/CaseUpdateForm";
 import AdminDefendants from "./pages/admin/Defendants";
+import Privacy from "./pages/Privacy";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -52,6 +53,7 @@ export default function App() {
               <Route path="/cases" element={<CaseList />} />
               <Route path="/cases/:id" element={<CaseDetail />} />
               <Route path="/tools" element={<LegalTools />} />
+              <Route path="/privacy" element={<Privacy />} />
 
               {/* 로그인 필수 */}
               <Route path="/my" element={<ProtectedRoute><MyCases /></ProtectedRoute>} />

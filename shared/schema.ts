@@ -227,6 +227,32 @@ export const defendantDocuments = pgTable("defendant_documents", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── 개인정보 처리 동의 ───
+export const consents = pgTable("consents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  consentType: varchar("consent_type", { length: 50 }).notNull(),
+  // privacy_policy, pii_collection, third_party_sharing, marketing
+  version: varchar("version", { length: 20 }).notNull().default("1.0"),
+  agreed: boolean("agreed").notNull().default(true),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── 감사 로그 (PII 접근 기록) ───
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  action: varchar("action", { length: 50 }).notNull(),
+  // view_parties, view_defendants, export_data, delete_data, view_evidence
+  tableName: varchar("table_name", { length: 50 }),
+  recordId: integer("record_id"),
+  details: text("details"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── 세션 (express-session) ───
 export const sessions = pgTable("session", {
   sid: varchar("sid").primaryKey(),
@@ -289,3 +315,5 @@ export type ProvisionalSeizure = typeof provisionalSeizures.$inferSelect;
 export type Defendant = typeof defendants.$inferSelect;
 export type InsertDefendant = typeof defendants.$inferInsert;
 export type DefendantDocument = typeof defendantDocuments.$inferSelect;
+export type Consent = typeof consents.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;

@@ -4,11 +4,11 @@ import { db } from "./db";
 import {
   users, cases, caseParties, evidence, caseUpdates,
   paymentOrders, provisionalSeizures, paymentSessions, paymentTransactions,
-  billingKeys, defendants, defendantDocuments,
+  billingKeys, defendants, defendantDocuments, consents, auditLogs,
 } from "../shared/schema";
 import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, hashPassword, loginWithSessionRegeneration } from "./auth";
-import { encryptPII } from "./crypto";
+import { encryptPII, decryptPII } from "./crypto";
 import { upload, deleteFile } from "./storage";
 import {
   createPaymentSession, validatePaymentCallback,
@@ -16,6 +16,27 @@ import {
   isNicePayConfigured, isKeyinConfigured,
   registerBillingKey, approveBillingPayment, removeBillingKey,
 } from "./nicepay";
+
+// 감사 로그 기록 헬퍼
+async function logAudit(req: Request, action: string, tableName?: string, recordId?: number, details?: string) {
+  try {
+    await db.insert(auditLogs).values({
+      userId: (req.user as any)?.id || null,
+      action,
+      tableName: tableName || null,
+      recordId: recordId || null,
+      details: details || null,
+      ipAddress: req.ip || req.headers["x-forwarded-for"]?.toString() || null,
+    });
+  } catch {}
+}
+
+// API 응답에서 민감정보 제거
+function stripPII(obj: any): any {
+  if (!obj) return obj;
+  const { residentNumber, signatureImage, password, ...safe } = obj;
+  return safe;
+}
 
 export function registerRoutes(app: Express) {
   // ═══════════════════════════════════════════
@@ -78,6 +99,134 @@ export function registerRoutes(app: Express) {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "인증되지 않음" });
     const { password: _, ...safeUser } = req.user as any;
     return res.json(safeUser);
+  });
+
+  // ═══════════════════════════════════════════
+  // 개인정보 동의 / 정보주체 권리 API
+  // ═══════════════════════════════════════════
+
+  // 동의 기록
+  app.post("/api/consent", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { consentTypes, version } = req.body;
+      // consentTypes: ["privacy_policy", "pii_collection", "third_party_sharing"]
+      if (!Array.isArray(consentTypes) || consentTypes.length === 0) {
+        return res.status(400).json({ error: "동의 항목이 필요합니다." });
+      }
+      const ip = req.ip || req.headers["x-forwarded-for"]?.toString() || "";
+      const ua = req.headers["user-agent"] || "";
+
+      for (const ct of consentTypes) {
+        await db.insert(consents).values({
+          userId,
+          consentType: ct,
+          version: version || "1.0",
+          agreed: true,
+          ipAddress: ip,
+          userAgent: ua,
+        });
+      }
+      return res.json({ ok: true });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 내 동의 내역 조회
+  app.get("/api/my/consents", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const list = await db.select().from(consents).where(eq(consents.userId, userId)).orderBy(desc(consents.createdAt));
+      return res.json(list);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 내 개인정보 내보내기 (정보주체 열람권, 개인정보보호법 제35조)
+  app.get("/api/user/export", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      await logAudit(req, "export_data", "users", userId);
+
+      const [userData] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const myParties = await db.select().from(caseParties).where(eq(caseParties.userId, userId));
+      const myEvidence = await db.select({
+        id: evidence.id, caseId: evidence.caseId, fileName: evidence.fileName,
+        fileType: evidence.fileType, description: evidence.description, createdAt: evidence.createdAt,
+      }).from(evidence).where(eq(evidence.casePartyId, sql`ANY(ARRAY[${sql.raw(myParties.map(p => p.id).join(",") || "0")}]::int[])`));
+      const myOrders = await db.select().from(paymentOrders).where(eq(paymentOrders.userId, userId));
+      const mySeizures = await db.select().from(provisionalSeizures).where(eq(provisionalSeizures.userId, userId));
+      const myPayments = await db.select({
+        id: paymentTransactions.id, amount: paymentTransactions.amount,
+        status: paymentTransactions.status, paymentType: paymentTransactions.paymentType,
+        createdAt: paymentTransactions.createdAt,
+      }).from(paymentTransactions).where(eq(paymentTransactions.userId, userId));
+      const myConsents = await db.select().from(consents).where(eq(consents.userId, userId));
+
+      const { password: _, ...safeUser } = userData;
+      return res.json({
+        exportDate: new Date().toISOString(),
+        user: safeUser,
+        caseParticipations: myParties.map(stripPII),
+        evidence: myEvidence,
+        paymentOrders: myOrders,
+        provisionalSeizures: mySeizures,
+        payments: myPayments,
+        consents: myConsents,
+      });
+    } catch (err) {
+      console.error("데이터 내보내기 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 내 개인정보 삭제 요청 (정보주체 삭제권, 개인정보보호법 제36조)
+  app.delete("/api/user/delete", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      await logAudit(req, "delete_data", "users", userId, "사용자 삭제 요청");
+
+      // 증거 파일 삭제
+      const myParties = await db.select().from(caseParties).where(eq(caseParties.userId, userId));
+      for (const party of myParties) {
+        const files = await db.select().from(evidence).where(eq(evidence.casePartyId, party.id));
+        for (const file of files) { await deleteFile(file.filePath); }
+        await db.delete(evidence).where(eq(evidence.casePartyId, party.id));
+      }
+
+      // 빌링키 비활성화
+      await db.update(billingKeys).set({ isActive: false }).where(eq(billingKeys.userId, userId));
+
+      // 당사자 정보 익명화 (결제 기록 보존을 위해 삭제 대신 익명화)
+      for (const party of myParties) {
+        await db.update(caseParties).set({
+          name: "탈퇴회원", phone: null, email: null, address: null,
+          residentNumber: null, damageDescription: null, signatureImage: null,
+        }).where(eq(caseParties.id, party.id));
+        // 참여자 수 감소
+        await db.update(cases).set({ currentCount: sql`GREATEST(${cases.currentCount} - 1, 0)` }).where(eq(cases.id, party.caseId));
+      }
+
+      // 동의 기록 보존 (법적 근거), 사용자 정보 익명화
+      await db.update(users).set({
+        email: `deleted_${userId}@withdrawn.local`,
+        name: "탈퇴회원",
+        phone: null,
+        password: "DELETED",
+      }).where(eq(users.id, userId));
+
+      // 세션 종료
+      req.logout(() => {
+        req.session.destroy(() => {
+          return res.json({ ok: true, message: "개인정보가 삭제되었습니다." });
+        });
+      });
+    } catch (err) {
+      console.error("데이터 삭제 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
   });
 
   // ═══════════════════════════════════════════
@@ -740,15 +889,17 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // 당사자 목록 (관리자)
+  // 당사자 목록 (관리자) — 감사 로그 기록
   app.get("/api/admin/cases/:id/parties", requireAdmin, async (req, res) => {
     try {
+      const caseId = parseInt(req.params.id);
+      await logAudit(req, "view_parties", "case_parties", caseId);
       const parties = await db
         .select()
         .from(caseParties)
-        .where(eq(caseParties.caseId, parseInt(req.params.id)))
+        .where(eq(caseParties.caseId, caseId))
         .orderBy(desc(caseParties.createdAt));
-      return res.json(parties);
+      return res.json(parties.map(stripPII));
     } catch (err) {
       return res.status(500).json({ error: "서버 오류" });
     }
@@ -800,16 +951,17 @@ export function registerRoutes(app: Express) {
   // 상대방(피고/채무자) 관리 API
   // ═══════════════════════════════════════════
 
-  // 상대방 목록 조회
+  // 상대방 목록 조회 — 감사 로그 기록
   app.get("/api/admin/cases/:id/defendants", requireAdmin, async (req, res) => {
     try {
       const caseId = parseInt(req.params.id);
+      await logAudit(req, "view_defendants", "defendants", caseId);
       const list = await db
         .select()
         .from(defendants)
         .where(eq(defendants.caseId, caseId))
         .orderBy(desc(defendants.createdAt));
-      return res.json(list);
+      return res.json(list.map(stripPII));
     } catch (err) {
       return res.status(500).json({ error: "서버 오류" });
     }

@@ -66,8 +66,9 @@ export default function Footer() {
             </div>
           </div>
         </div>
-        <div className="mt-8 pt-6 border-t border-gray-800 text-xs text-center">
-          &copy; {new Date().getFullYear()} 법무법인 윈스. All rights reserved.
+        <div className="mt-8 pt-6 border-t border-gray-800 text-xs text-center space-y-1">
+          <div><Link to="/privacy" className="hover:text-white transition-colors">개인정보처리방침</Link></div>
+          <div>&copy; {new Date().getFullYear()} 법무법인 윈스. All rights reserved.</div>
         </div>
       </div>
     </footer>

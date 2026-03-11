@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
 import { useState } from "react";
@@ -9,6 +9,7 @@ export default function BillingKeyRegister() {
   const [form, setForm] = useState({
     cardNumber: "", expMonth: "", expYear: "", cardPw: "", idNo: "",
   });
+  const [thirdPartyConsent, setThirdPartyConsent] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,8 +21,10 @@ export default function BillingKeyRegister() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!thirdPartyConsent) { setError("개인정보 제3자 제공 동의가 필요합니다."); return; }
     setLoading(true);
     try {
+      await apiRequest("/api/consent", { method: "POST", body: JSON.stringify({ consentTypes: ["third_party_sharing"], version: "1.0" }) });
       await apiRequest(`/api/cases/${id}/billing-key`, {
         method: "POST",
         body: JSON.stringify(form),
@@ -95,6 +98,12 @@ export default function BillingKeyRegister() {
               required maxLength={10} placeholder="YYMMDD" />
           </div>
 
+          <div className="bg-gray-50 rounded-lg p-4">
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input type="checkbox" checked={thirdPartyConsent} onChange={(e) => setThirdPartyConsent(e.target.checked)} className="mt-0.5" />
+              <span>결제 처리를 위해 나이스페이먼츠(주)에 개인정보(성명, 연락처, 카드정보)를 제공하는 것에 동의합니다. <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary-500 underline">개인정보처리방침</Link> (필수)</span>
+            </label>
+          </div>
           <button type="submit" disabled={loading} className="btn-primary w-full">
             {loading ? "등록 중..." : "카드 등록"}
           </button>

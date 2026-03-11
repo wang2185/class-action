@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "../lib/queryClient";
 import { useState } from "react";
@@ -10,6 +10,7 @@ export default function JoinCase() {
     name: "", phone: "", email: "", address: "",
     residentNumber: "", damageAmount: "", damageDescription: "",
   });
+  const [piiConsent, setPiiConsent] = useState(false);
   const [error, setError] = useState("");
 
   const { data: caseData } = useQuery({
@@ -28,9 +29,14 @@ export default function JoinCase() {
 
   const update = (field: string, value: string) => setForm((prev) => ({ ...prev, [field]: value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!piiConsent) { setError("개인정보 수집·이용 동의가 필요합니다."); return; }
     if (!form.name) { setError("이름은 필수입니다."); return; }
+    // 동의 기록 저장 후 참여 신청
+    try {
+      await apiRequest("/api/consent", { method: "POST", body: JSON.stringify({ consentTypes: ["pii_collection"], version: "1.0" }) });
+    } catch { setError("동의 기록 저장에 실패했습니다. 다시 시도해주세요."); return; }
     joinMutation.mutate(form);
   };
 
@@ -83,6 +89,13 @@ export default function JoinCase() {
 
         <h2 className="font-bold text-lg border-b pb-2 pt-4">증거 파일 업로드</h2>
         <p className="text-sm text-gray-500">참여 신청 후 증거 파일을 업로드할 수 있습니다.</p>
+
+        <div className="bg-gray-50 rounded-lg p-4">
+          <label className="flex items-start gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={piiConsent} onChange={(e) => setPiiConsent(e.target.checked)} className="mt-0.5" />
+            <span>소송 진행을 위한 개인정보(이름, 연락처, 주소, 주민등록번호, 피해내용) 수집·이용에 동의합니다. 주민등록번호는 AES-256-GCM으로 암호화 저장됩니다. <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary-500 underline">개인정보처리방침</Link> (필수)</span>
+          </label>
+        </div>
 
         <button type="submit" disabled={joinMutation.isPending} className="btn-primary w-full">
           {joinMutation.isPending ? "제출 중..." : "참여 신청"}
