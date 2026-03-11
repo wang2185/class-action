@@ -13,6 +13,9 @@ const app = express();
 const PORT = parseInt(process.env.PORT || "5001");
 const isProd = process.env.NODE_ENV === "production";
 
+// Nginx 리버스 프록시(127.0.0.1) 환경: 첫 프록시 홉만 신뢰
+app.set("trust proxy", 1);
+
 // Security
 app.use(
   helmet({
