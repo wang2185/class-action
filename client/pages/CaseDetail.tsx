@@ -26,6 +26,11 @@ export default function CaseDetail() {
     retry: false,
   });
 
+  const { data: defData } = useQuery({
+    queryKey: ["defendantCount", id],
+    queryFn: () => apiRequest(`/api/cases/${id}/defendant-count`),
+  });
+
   if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]">불러오는 중...</div>;
   if (!caseData) return <div className="flex items-center justify-center min-h-[60vh]">사건을 찾을 수 없습니다.</div>;
 
@@ -81,7 +86,7 @@ export default function CaseDetail() {
           <div className="card">
             <h3 className="font-bold mb-3">사건 정보</h3>
             <dl className="space-y-2 text-sm">
-              <div className="flex justify-between"><dt className="text-gray-500">피고</dt><dd className="font-medium">{c.defendant || "-"}</dd></div>
+              <div className="flex justify-between"><dt className="text-gray-500">상대방</dt><dd className="font-medium">{defData?.count > 0 ? `${defData.count}명` : c.defendant || "-"}</dd></div>
               <div className="flex justify-between"><dt className="text-gray-500">관할법원</dt><dd className="font-medium">{c.courtName || "-"}</dd></div>
               <div className="flex justify-between"><dt className="text-gray-500">참여자</dt><dd className="font-bold text-primary-500">{c.partyCount || c.currentCount || 0}명</dd></div>
               {c.targetCount && <div className="flex justify-between"><dt className="text-gray-500">목표인원</dt><dd className="font-medium">{c.targetCount}명</dd></div>}

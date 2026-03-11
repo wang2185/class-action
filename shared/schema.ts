@@ -191,6 +191,42 @@ export const provisionalSeizures = pgTable("provisional_seizures", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ─── 상대방 (피고/채무자) ───
+export const defendants = pgTable("defendants", {
+  id: serial("id").primaryKey(),
+  caseId: integer("case_id").notNull().references(() => cases.id),
+  name: varchar("name", { length: 200 }).notNull(),
+  partyType: varchar("party_type", { length: 20 }).notNull().default("individual"),
+  // individual(개인), company(법인)
+  residentNumber: varchar("resident_number", { length: 100 }), // 암호화 저장 (주민등록번호/사업자등록번호)
+  companyRegNumber: varchar("company_reg_number", { length: 50 }), // 법인등록번호
+  representativeName: varchar("representative_name", { length: 100 }), // 대표자명
+  address: text("address"),
+  phone: varchar("phone", { length: 20 }),
+  email: varchar("email", { length: 255 }),
+  claimAmount: integer("claim_amount"), // 청구금액
+  contractDate: varchar("contract_date", { length: 20 }), // 계약일자
+  unitNumber: varchar("unit_number", { length: 100 }), // 호수/동호수 (분양 사건용)
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── 상대방 첨부자료 ───
+export const defendantDocuments = pgTable("defendant_documents", {
+  id: serial("id").primaryKey(),
+  defendantId: integer("defendant_id").notNull().references(() => defendants.id, { onDelete: "cascade" }),
+  caseId: integer("case_id").notNull().references(() => cases.id),
+  fileName: varchar("file_name", { length: 500 }).notNull(),
+  filePath: varchar("file_path", { length: 1000 }).notNull(),
+  fileType: varchar("file_type", { length: 100 }),
+  fileSize: integer("file_size"),
+  documentType: varchar("document_type", { length: 50 }).notNull().default("other"),
+  // contract(계약서), registry(등기부등본), resident_cert(주민등록등본), id_copy(신분증사본),
+  // payment_proof(입금증명), demand_letter(내용증명), other(기타)
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── 세션 (express-session) ───
 export const sessions = pgTable("session", {
   sid: varchar("sid").primaryKey(),
@@ -209,6 +245,7 @@ export const casesRelations = relations(cases, ({ many }) => ({
   evidence: many(evidence),
   paymentOrders: many(paymentOrders),
   provisionalSeizures: many(provisionalSeizures),
+  defendants: many(defendants),
 }));
 
 export const casePartiesRelations = relations(caseParties, ({ one, many }) => ({
@@ -226,6 +263,16 @@ export const caseUpdatesRelations = relations(caseUpdates, ({ one }) => ({
   case: one(cases, { fields: [caseUpdates.caseId], references: [cases.id] }),
 }));
 
+export const defendantsRelations = relations(defendants, ({ one, many }) => ({
+  case: one(cases, { fields: [defendants.caseId], references: [cases.id] }),
+  documents: many(defendantDocuments),
+}));
+
+export const defendantDocumentsRelations = relations(defendantDocuments, ({ one }) => ({
+  defendant: one(defendants, { fields: [defendantDocuments.defendantId], references: [defendants.id] }),
+  case: one(cases, { fields: [defendantDocuments.caseId], references: [cases.id] }),
+}));
+
 // ─── Types ───
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -239,3 +286,6 @@ export type PaymentSession = typeof paymentSessions.$inferSelect;
 export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
 export type PaymentOrder = typeof paymentOrders.$inferSelect;
 export type ProvisionalSeizure = typeof provisionalSeizures.$inferSelect;
+export type Defendant = typeof defendants.$inferSelect;
+export type InsertDefendant = typeof defendants.$inferInsert;
+export type DefendantDocument = typeof defendantDocuments.$inferSelect;

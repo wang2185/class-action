@@ -62,6 +62,7 @@ export default function AdminDashboard() {
                       <div className="flex items-center justify-center gap-2">
                         <Link to={`/admin/cases/${c.id}/edit`} className="text-primary-500 hover:underline">편집</Link>
                         <Link to={`/admin/cases/${c.id}/parties`} className="text-blue-500 hover:underline">당사자</Link>
+                        <Link to={`/admin/cases/${c.id}/defendants`} className="text-orange-500 hover:underline">상대방</Link>
                         <Link to={`/admin/cases/${c.id}/update`} className="text-green-500 hover:underline">경과</Link>
                       </div>
                     </td>

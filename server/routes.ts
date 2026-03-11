@@ -4,9 +4,9 @@ import { db } from "./db";
 import {
   users, cases, caseParties, evidence, caseUpdates,
   paymentOrders, provisionalSeizures, paymentSessions, paymentTransactions,
-  billingKeys,
+  billingKeys, defendants, defendantDocuments,
 } from "../shared/schema";
-import { eq, desc, and, sql, count } from "drizzle-orm";
+import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, hashPassword, loginWithSessionRegeneration } from "./auth";
 import { encryptPII } from "./crypto";
 import { upload, deleteFile } from "./storage";
@@ -792,6 +792,275 @@ export function registerRoutes(app: Express) {
         .returning();
       return res.json(updated);
     } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // ═══════════════════════════════════════════
+  // 상대방(피고/채무자) 관리 API
+  // ═══════════════════════════════════════════
+
+  // 상대방 목록 조회
+  app.get("/api/admin/cases/:id/defendants", requireAdmin, async (req, res) => {
+    try {
+      const caseId = parseInt(req.params.id);
+      const list = await db
+        .select()
+        .from(defendants)
+        .where(eq(defendants.caseId, caseId))
+        .orderBy(desc(defendants.createdAt));
+      return res.json(list);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 상대방 개별 추가
+  app.post("/api/admin/cases/:id/defendants", requireAdmin, async (req, res) => {
+    try {
+      const caseId = parseInt(req.params.id);
+      const { name, partyType, residentNumber, companyRegNumber, representativeName,
+        address, phone, email, claimAmount, contractDate, unitNumber, notes } = req.body;
+
+      if (!name) return res.status(400).json({ error: "이름은 필수입니다." });
+
+      const [created] = await db.insert(defendants).values({
+        caseId,
+        name,
+        partyType: partyType || "individual",
+        residentNumber: residentNumber ? encryptPII(residentNumber) : null,
+        companyRegNumber,
+        representativeName,
+        address,
+        phone,
+        email,
+        claimAmount: claimAmount ? parseInt(claimAmount) : null,
+        contractDate,
+        unitNumber,
+        notes,
+      }).returning();
+
+      return res.status(201).json(created);
+    } catch (err) {
+      console.error("상대방 추가 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 상대방 수정
+  app.put("/api/admin/defendants/:id", requireAdmin, async (req, res) => {
+    try {
+      const { name, partyType, residentNumber, companyRegNumber, representativeName,
+        address, phone, email, claimAmount, contractDate, unitNumber, notes } = req.body;
+
+      const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (partyType !== undefined) updateData.partyType = partyType;
+      if (residentNumber) updateData.residentNumber = encryptPII(residentNumber);
+      if (companyRegNumber !== undefined) updateData.companyRegNumber = companyRegNumber;
+      if (representativeName !== undefined) updateData.representativeName = representativeName;
+      if (address !== undefined) updateData.address = address;
+      if (phone !== undefined) updateData.phone = phone;
+      if (email !== undefined) updateData.email = email;
+      if (claimAmount !== undefined) updateData.claimAmount = claimAmount ? parseInt(claimAmount) : null;
+      if (contractDate !== undefined) updateData.contractDate = contractDate;
+      if (unitNumber !== undefined) updateData.unitNumber = unitNumber;
+      if (notes !== undefined) updateData.notes = notes;
+
+      const [updated] = await db
+        .update(defendants)
+        .set(updateData)
+        .where(eq(defendants.id, parseInt(req.params.id)))
+        .returning();
+      return res.json(updated);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 상대방 삭제
+  app.delete("/api/admin/defendants/:id", requireAdmin, async (req, res) => {
+    try {
+      const defId = parseInt(req.params.id);
+      // 첨부자료 파일 삭제
+      const docs = await db.select().from(defendantDocuments).where(eq(defendantDocuments.defendantId, defId));
+      for (const doc of docs) {
+        await deleteFile(doc.filePath);
+      }
+      await db.delete(defendantDocuments).where(eq(defendantDocuments.defendantId, defId));
+      await db.delete(defendants).where(eq(defendants.id, defId));
+      return res.json({ ok: true });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 상대방 엑셀 일괄 등록 (JSON 배열로 받기)
+  app.post("/api/admin/cases/:id/defendants/bulk", requireAdmin, async (req, res) => {
+    try {
+      const caseId = parseInt(req.params.id);
+      const { rows } = req.body; // [{name, address, phone, ...}, ...]
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ error: "등록할 데이터가 없습니다." });
+      }
+
+      const inserted = [];
+      for (const row of rows) {
+        if (!row.name) continue;
+        const [created] = await db.insert(defendants).values({
+          caseId,
+          name: row.name,
+          partyType: row.partyType || "individual",
+          residentNumber: row.residentNumber ? encryptPII(row.residentNumber) : null,
+          companyRegNumber: row.companyRegNumber || null,
+          representativeName: row.representativeName || null,
+          address: row.address || null,
+          phone: row.phone || null,
+          email: row.email || null,
+          claimAmount: row.claimAmount ? parseInt(row.claimAmount) : null,
+          contractDate: row.contractDate || null,
+          unitNumber: row.unitNumber || null,
+          notes: row.notes || null,
+        }).returning();
+        inserted.push(created);
+      }
+
+      return res.status(201).json({ count: inserted.length, defendants: inserted });
+    } catch (err) {
+      console.error("일괄 등록 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 상대방 첨부자료 업로드
+  app.post("/api/admin/defendants/:id/documents", requireAdmin, upload.array("files", 10), async (req: any, res) => {
+    try {
+      const defendantId = parseInt(req.params.id);
+      const { documentType, description } = req.body;
+
+      const [def] = await db.select().from(defendants).where(eq(defendants.id, defendantId)).limit(1);
+      if (!def) return res.status(404).json({ error: "상대방을 찾을 수 없습니다." });
+
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) return res.status(400).json({ error: "파일을 선택해주세요." });
+
+      const inserted = [];
+      for (const file of files) {
+        const [doc] = await db.insert(defendantDocuments).values({
+          defendantId,
+          caseId: def.caseId,
+          fileName: file.originalname,
+          filePath: file.path,
+          fileType: file.mimetype,
+          fileSize: file.size,
+          documentType: documentType || "other",
+          description,
+        }).returning();
+        inserted.push(doc);
+      }
+
+      return res.status(201).json(inserted);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 상대방 첨부자료 목록
+  app.get("/api/admin/defendants/:id/documents", requireAdmin, async (req, res) => {
+    try {
+      const docs = await db
+        .select()
+        .from(defendantDocuments)
+        .where(eq(defendantDocuments.defendantId, parseInt(req.params.id)))
+        .orderBy(desc(defendantDocuments.createdAt));
+      return res.json(docs);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 첨부자료 삭제
+  app.delete("/api/admin/defendant-documents/:id", requireAdmin, async (req, res) => {
+    try {
+      const [doc] = await db.select().from(defendantDocuments).where(eq(defendantDocuments.id, parseInt(req.params.id))).limit(1);
+      if (!doc) return res.status(404).json({ error: "문서를 찾을 수 없습니다." });
+      await deleteFile(doc.filePath);
+      await db.delete(defendantDocuments).where(eq(defendantDocuments.id, doc.id));
+      return res.json({ ok: true });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 상대방 수 조회 (공개 - CaseDetail 사이드바용, count만 반환)
+  app.get("/api/cases/:id/defendant-count", async (req, res) => {
+    try {
+      const caseId = parseInt(req.params.id);
+      const [result] = await db.select({ count: count() }).from(defendants).where(eq(defendants.caseId, caseId));
+      return res.json({ count: result?.count || 0 });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 소송서류 생성 (지급명령서/소장 — 상대방별)
+  app.post("/api/admin/cases/:id/generate-documents", requireAdmin, async (req, res) => {
+    try {
+      const caseId = parseInt(req.params.id);
+      const { documentType, defendantIds } = req.body;
+      // documentType: "payment_order" | "complaint" | "seizure"
+
+      const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+      if (!caseData) return res.status(404).json({ error: "사건을 찾을 수 없습니다." });
+
+      let targetDefendants;
+      if (defendantIds && defendantIds.length > 0) {
+        const safeIds = defendantIds.map((id: any) => parseInt(id)).filter((id: number) => !isNaN(id));
+        targetDefendants = await db
+          .select()
+          .from(defendants)
+          .where(and(eq(defendants.caseId, caseId), inArray(defendants.id, safeIds)));
+      } else {
+        targetDefendants = await db.select().from(defendants).where(eq(defendants.caseId, caseId));
+      }
+
+      if (targetDefendants.length === 0) {
+        return res.status(400).json({ error: "대상 상대방이 없습니다." });
+      }
+
+      const DOCUMENT_LABELS: Record<string, string> = {
+        payment_order: "지급명령 신청서",
+        complaint: "소장",
+        seizure: "가압류 신청서",
+      };
+
+      const documents = targetDefendants.map((def) => ({
+        defendantId: def.id,
+        defendantName: def.name,
+        documentType: documentType || "payment_order",
+        content: {
+          title: `${DOCUMENT_LABELS[documentType] || "소송서류"}`,
+          courtName: caseData.courtName || "○○지방법원",
+          caseTitle: caseData.title,
+          caseNumber: caseData.caseNumber || "",
+          // 당사자 표시
+          plaintiff: caseData.defendant || "원고 (위임인)",
+          defendant: {
+            name: def.name,
+            address: def.address || "",
+            phone: def.phone || "",
+            unitNumber: def.unitNumber || "",
+            representativeName: def.representativeName || "",
+            companyRegNumber: def.companyRegNumber || "",
+          },
+          claimAmount: def.claimAmount || 0,
+          contractDate: def.contractDate || "",
+        },
+      }));
+
+      return res.json({ count: documents.length, documents });
+    } catch (err) {
+      console.error("서류 생성 오류:", err);
       return res.status(500).json({ error: "서버 오류" });
     }
   });

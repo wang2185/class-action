@@ -21,6 +21,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminCaseForm from "./pages/admin/CaseForm";
 import AdminParties from "./pages/admin/Parties";
 import AdminCaseUpdate from "./pages/admin/CaseUpdateForm";
+import AdminDefendants from "./pages/admin/Defendants";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -70,6 +71,7 @@ export default function App() {
               <Route path="/admin/cases/:id/edit" element={<AdminRoute><AdminCaseForm /></AdminRoute>} />
               <Route path="/admin/cases/:id/parties" element={<AdminRoute><AdminParties /></AdminRoute>} />
               <Route path="/admin/cases/:id/update" element={<AdminRoute><AdminCaseUpdate /></AdminRoute>} />
+              <Route path="/admin/cases/:id/defendants" element={<AdminRoute><AdminDefendants /></AdminRoute>} />
             </Routes>
           </main>
           <Footer />
