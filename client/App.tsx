@@ -30,6 +30,7 @@ import Guide from "./pages/Guide";
 import Lawyer from "./pages/Lawyer";
 import CaseRequest from "./pages/CaseRequest";
 import Faq from "./pages/Faq";
+import Welcome from "./pages/Welcome";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -77,6 +78,7 @@ export default function App() {
               <Route path="/consent" element={<Consent />} />
 
               {/* 로그인 필수 */}
+              <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
               <Route path="/my" element={<ProtectedRoute><MyCases /></ProtectedRoute>} />
               <Route path="/cases/:id/join" element={<ProtectedRoute><JoinCase /></ProtectedRoute>} />
               <Route path="/cases/:id/contract" element={<ProtectedRoute><Contract /></ProtectedRoute>} />

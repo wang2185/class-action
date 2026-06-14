@@ -12,6 +12,9 @@ const BCRYPT_ROUNDS = 12;
 const SESSION_TTL_MS = 4 * 60 * 60 * 1000; // 4시간
 
 export function setupAuth(app: Express) {
+  if (process.env.NODE_ENV === "production" && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 16)) {
+    throw new Error("SESSION_SECRET(16자 이상)을 운영 환경에 반드시 설정해야 합니다.");
+  }
   const PgStore = connectPgSimple(session);
 
   app.use(
@@ -49,9 +52,12 @@ export function setupAuth(app: Express) {
             .where(eq(users.email, email.toLowerCase().trim()))
             .limit(1);
 
-          if (!user) {
-            await bcrypt.hash("dummy", BCRYPT_ROUNDS);
-            return done(null, false, { message: "이메일 또는 비밀번호가 올바르지 않습니다." });
+          if (!user || !user.password) {
+            await bcrypt.hash("dummy", BCRYPT_ROUNDS); // 타이밍 공격 완화 + 소셜 전용 계정 분기
+            const msg = user && !user.password
+              ? "소셜 로그인으로 가입된 계정입니다. 간편 로그인을 이용해주세요."
+              : "이메일 또는 비밀번호가 올바르지 않습니다.";
+            return done(null, false, { message: msg });
           }
 
           const valid = await bcrypt.compare(password, user.password);

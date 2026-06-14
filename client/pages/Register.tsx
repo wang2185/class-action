@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../hooks/use-auth";
 import { apiRequest } from "../lib/queryClient";
 import { safeRedirect } from "../lib/redirect";
+import SocialButtons from "../components/SocialButtons";
 
 export default function Register() {
   const { register, user } = useAuth();
@@ -91,6 +92,7 @@ export default function Register() {
             {loading ? "가입 중…" : "회원가입"}
           </button>
         </form>
+        <SocialButtons redirect={redirect} />
         <p className="text-center text-sm text-gray-500 mt-4">
           이미 계정이 있으신가요? <Link to={`/login${redirect !== "/my" ? `?redirect=${encodeURIComponent(redirect)}` : ""}`} className="text-primary-500 font-semibold hover:underline">로그인</Link>
         </p>

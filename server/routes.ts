@@ -14,6 +14,7 @@ import { encryptPII, decryptPII } from "./crypto";
 import { upload, deleteFile } from "./storage";
 import { assembleDossier, buildPackageZip } from "./casePackage";
 import { sendSMS, sendEmail, notifyParty, mapWithConcurrency } from "./notify";
+import { registerSocialAuth } from "./socialAuth";
 import {
   createPaymentSession, validatePaymentCallback,
   requestPaymentApproval, completePayment, generatePaymentFormHTML, cancelPayment,
@@ -23,6 +24,34 @@ import {
 
 // 공개 절대 URL (결제/진행 링크)
 const PUBLIC_BASE = (process.env.PUBLIC_BASE_URL || process.env.CORS_ORIGIN || "https://class.lawciety.com").replace(/\/$/, "");
+const CONSENT_VERSION = "1.0"; // 동의 버전(서버 고정)
+const REQUIRED_CONSENTS = ["service_terms", "pii_collection"]; // 필수 동의 항목
+
+// 필수 동의(현행 버전) 보유 여부
+async function hasRequiredConsent(userId: number): Promise<boolean> {
+  const rows = await db.select().from(consents)
+    .where(and(
+      eq(consents.userId, userId),
+      inArray(consents.consentType, REQUIRED_CONSENTS),
+      eq(consents.agreed, true),
+      eq(consents.version, CONSENT_VERSION),
+    ));
+  const have = new Set(rows.map((r) => r.consentType));
+  return REQUIRED_CONSENTS.every((t) => have.has(t));
+}
+
+// 동의 게이트 — ⚠ 소셜 전용 계정(비밀번호 없음)에만 적용. 로컬·레거시 계정은 가입 시 동의 처리되어 통과(레거시 잠금 방지).
+async function requireConsent(req: Request, res: Response, next: () => void) {
+  const u = req.user as any;
+  if (!u) return res.status(401).json({ error: "로그인이 필요합니다." });
+  if (u.password) return next();
+  try {
+    if (await hasRequiredConsent(u.id)) return next();
+    return res.status(403).json({ error: "약관 동의가 필요합니다.", code: "consent_required" });
+  } catch {
+    return res.status(500).json({ error: "서버 오류가 발생했습니다." });
+  }
+}
 
 // 결제링크 공개 라우트 전용 rate limiter (글로벌 200/15분과 별도, 더 엄격)
 const payLinkLimiter = rateLimit({
@@ -147,6 +176,7 @@ function clip(v: unknown, max: number): string {
 }
 
 export function registerRoutes(app: Express) {
+  registerSocialAuth(app); // 간편인증(소셜 로그인) 라우트 — SPA 캐치올보다 먼저 등록
   // ═══════════════════════════════════════════
   // 인증 API
   // ═══════════════════════════════════════════
@@ -174,11 +204,13 @@ export function registerRoutes(app: Express) {
         role: "member",
       }).returning();
 
-      req.login(user, (err) => {
-        if (err) return res.status(500).json({ error: "로그인 처리 실패" });
+      try {
+        await loginWithSessionRegeneration(req, user); // 세션 재생성(Session Fixation 방지)
         const { password: _, ...safeUser } = user;
         return res.status(201).json(safeUser);
-      });
+      } catch {
+        return res.status(500).json({ error: "로그인 처리 실패" });
+      }
     } catch (err: any) {
       console.error("회원가입 오류:", err);
       return res.status(500).json({ error: "서버 오류가 발생했습니다." });
@@ -217,19 +249,21 @@ export function registerRoutes(app: Express) {
   app.post("/api/consent", requireAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
-      const { consentTypes, version } = req.body;
-      // consentTypes: ["privacy_policy", "pii_collection", "third_party_sharing"]
-      if (!Array.isArray(consentTypes) || consentTypes.length === 0) {
-        return res.status(400).json({ error: "동의 항목이 필요합니다." });
+      const { consentTypes } = req.body;
+      // 허용 타입만 수용, 버전은 서버 고정(클라이언트 위변조 방지)
+      const ALLOWED = ["service_terms", "pii_collection", "marketing", "third_party_sharing", "privacy_policy"];
+      const types = Array.isArray(consentTypes) ? [...new Set(consentTypes)].filter((t) => ALLOWED.includes(t)) : [];
+      if (!types.length) {
+        return res.status(400).json({ error: "유효한 동의 항목이 필요합니다." });
       }
       const ip = req.ip || req.headers["x-forwarded-for"]?.toString() || "";
       const ua = req.headers["user-agent"] || "";
 
-      for (const ct of consentTypes) {
+      for (const ct of types) {
         await db.insert(consents).values({
           userId,
           consentType: ct,
-          version: version || "1.0",
+          version: CONSENT_VERSION,
           agreed: true,
           ipAddress: ip,
           userAgent: ua,
@@ -416,7 +450,7 @@ export function registerRoutes(app: Express) {
   // ═══════════════════════════════════════════
   // 당사자 참여 API
   // ═══════════════════════════════════════════
-  app.post("/api/cases/:id/join", requireAuth, async (req, res) => {
+  app.post("/api/cases/:id/join", requireAuth, requireConsent, async (req, res) => {
     try {
       const caseId = parseInt(req.params.id);
       const userId = (req.user as any).id;

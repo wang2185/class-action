@@ -7,6 +7,8 @@ import {
   boolean,
   timestamp,
   json,
+  uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -14,12 +16,25 @@ import { relations } from "drizzle-orm";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  password: varchar("password", { length: 255 }).notNull(),
+  password: varchar("password", { length: 255 }), // 소셜 전용 계정은 null (비밀번호 없음)
   name: varchar("name", { length: 100 }).notNull(),
   phone: varchar("phone", { length: 20 }),
   role: varchar("role", { length: 20 }).notNull().default("member"), // member, admin
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ─── 소셜 로그인 연결 (간편인증: 카카오·네이버·구글 등) ───
+export const socialAccounts = pgTable("social_accounts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  provider: varchar("provider", { length: 20 }).notNull(), // kakao | naver | google | apple
+  providerUserId: varchar("provider_user_id", { length: 255 }).notNull(), // 제공자 측 고유 ID
+  email: varchar("email", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  providerUid: uniqueIndex("social_accounts_provider_uid_idx").on(t.provider, t.providerUserId),
+  userIdx: index("social_accounts_user_idx").on(t.userId),
+}));
 
 // ─── 단체소송 사건 ───
 export const cases = pgTable("cases", {
@@ -380,3 +395,4 @@ export type Notification = typeof notifications.$inferSelect;
 export type PaymentLink = typeof paymentLinks.$inferSelect;
 export type CaseRequest = typeof caseRequests.$inferSelect;
 export type InsertCaseRequest = typeof caseRequests.$inferInsert;
+export type SocialAccount = typeof socialAccounts.$inferSelect;
