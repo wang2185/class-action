@@ -79,6 +79,9 @@ export const evidence = pgTable("evidence", {
   fileType: varchar("file_type", { length: 100 }),
   fileSize: integer("file_size"),
   description: text("description"),
+  category: varchar("category", { length: 50 }).default("other"),
+  // contract(계약서), payment_proof(입금/결제), id_copy(신분증), kakao(카톡/문자),
+  // photo(사진), recording(녹취), statement(진술/메모), other(기타)
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

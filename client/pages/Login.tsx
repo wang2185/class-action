@@ -1,16 +1,19 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../hooks/use-auth";
+import { safeRedirect } from "../lib/redirect";
 
 export default function Login() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = safeRedirect(searchParams.get("redirect")); // 로그인 후 복귀(오픈 리다이렉트 방지)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (user) { navigate("/my", { replace: true }); return null; }
+  if (user) { navigate(redirect, { replace: true }); return null; }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +21,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate("/my");
+      navigate(redirect);
     } catch (err: any) {
       setError(err.message || "로그인에 실패했습니다.");
     } finally {
@@ -45,7 +48,7 @@ export default function Login() {
           </button>
         </form>
         <p className="text-center text-sm text-gray-500 mt-4">
-          아직 계정이 없으신가요? <Link to="/register" className="text-primary-500 font-semibold hover:underline">회원가입</Link>
+          아직 계정이 없으신가요? <Link to={`/register${redirect !== "/my" ? `?redirect=${encodeURIComponent(redirect)}` : ""}`} className="text-primary-500 font-semibold hover:underline">회원가입</Link>
         </p>
       </div>
     </div>

@@ -106,11 +106,18 @@ export default function CaseDetail() {
           {/* 참여 상태별 버튼 */}
           <div className="card space-y-3">
             {!user ? (
-              <>
-                <p className="text-sm text-gray-500">로그인 후 참여할 수 있습니다.</p>
-                <Link to="/login" className="btn-primary w-full text-center block">로그인</Link>
-                <Link to="/register" className="btn-secondary w-full text-center block">회원가입</Link>
-              </>
+              isRecruiting ? (
+                <>
+                  <Link to={`/cases/${id}/join`} className="btn-primary w-full text-center block">참여 신청하기</Link>
+                  <p className="text-xs text-gray-400 text-center">신청 시 로그인(회원가입)이 필요합니다.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-500">로그인 후 참여할 수 있습니다.</p>
+                  <Link to="/login" className="btn-primary w-full text-center block">로그인</Link>
+                  <Link to="/register" className="btn-secondary w-full text-center block">회원가입</Link>
+                </>
+              )
             ) : !hasJoined ? (
               isRecruiting ? (
                 <Link to={`/cases/${id}/join`} className="btn-primary w-full text-center block">참여 신청하기</Link>

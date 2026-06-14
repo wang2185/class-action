@@ -1,17 +1,20 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../hooks/use-auth";
 import { apiRequest } from "../lib/queryClient";
+import { safeRedirect } from "../lib/redirect";
 
 export default function Register() {
   const { register, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = safeRedirect(searchParams.get("redirect")); // 가입 후 복귀(오픈 리다이렉트 방지)
   const [form, setForm] = useState({ email: "", password: "", passwordConfirm: "", name: "", phone: "" });
   const [consents, setConsents] = useState({ privacy: false, pii: false });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (user) { navigate("/my", { replace: true }); return null; }
+  if (user) { navigate(redirect, { replace: true }); return null; }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +28,7 @@ export default function Register() {
       await register({ email: form.email, password: form.password, name: form.name, phone: form.phone || undefined });
       // 동의 기록 저장 (consentTypes 배열로 전송)
       await apiRequest("/api/consent", { method: "POST", body: JSON.stringify({ consentTypes: ["privacy_policy", "pii_collection"], version: "1.0" }) });
-      navigate("/my");
+      navigate(redirect);
     } catch (err: any) {
       setError(err.message || "회원가입에 실패했습니다.");
     } finally {
@@ -76,7 +79,7 @@ export default function Register() {
           </button>
         </form>
         <p className="text-center text-sm text-gray-500 mt-4">
-          이미 계정이 있으신가요? <Link to="/login" className="text-primary-500 font-semibold hover:underline">로그인</Link>
+          이미 계정이 있으신가요? <Link to={`/login${redirect !== "/my" ? `?redirect=${encodeURIComponent(redirect)}` : ""}`} className="text-primary-500 font-semibold hover:underline">로그인</Link>
         </p>
       </div>
     </div>

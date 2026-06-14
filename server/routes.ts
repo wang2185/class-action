@@ -400,7 +400,9 @@ export function registerRoutes(app: Express) {
     try {
       const caseId = parseInt(req.params.id);
       const userId = (req.user as any).id;
-      const { description } = req.body;
+      const { description, category } = req.body;
+      const EVIDENCE_CATEGORIES = ["contract", "payment_proof", "id_copy", "kakao", "photo", "recording", "statement", "other"];
+      const safeCategory = EVIDENCE_CATEGORIES.includes(category) ? category : "other";
 
       const [party] = await db
         .select()
@@ -424,6 +426,7 @@ export function registerRoutes(app: Express) {
           fileType: file.mimetype,
           fileSize: file.size,
           description,
+          category: safeCategory,
         }).returning();
         inserted.push(ev);
       }

@@ -11,11 +11,23 @@ const UPDATE_COLORS: Record<string, string> = {
   hearing: "bg-yellow-100 text-yellow-700", ruling: "bg-red-100 text-red-700",
   settlement: "bg-purple-100 text-purple-700", document: "bg-green-100 text-green-700",
 };
+const EVIDENCE_CATEGORIES: { value: string; label: string }[] = [
+  { value: "contract", label: "계약서·약관" },
+  { value: "payment_proof", label: "입금/결제내역" },
+  { value: "id_copy", label: "신분증" },
+  { value: "kakao", label: "카카오톡/문자" },
+  { value: "photo", label: "피해 사진" },
+  { value: "recording", label: "통화 녹취" },
+  { value: "statement", label: "진술/메모" },
+  { value: "other", label: "기타" },
+];
+const EVIDENCE_CAT_LABEL: Record<string, string> = Object.fromEntries(EVIDENCE_CATEGORIES.map((c) => [c.value, c.label]));
 
 export default function CaseProgress() {
   const { id } = useParams();
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState("");
+  const [category, setCategory] = useState("other");
 
   const { data: caseData } = useQuery({ queryKey: ["case", id], queryFn: () => apiRequest(`/api/cases/${id}`) });
   const { data: updates, isLoading } = useQuery({
@@ -30,11 +42,16 @@ export default function CaseProgress() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    // 50MB 초과 사전 차단(서버 MAX_FILE_SIZE와 일치 → 413 왕복 방지)
+    const MAX = 50 * 1024 * 1024;
+    const tooBig = Array.from(files).find((f) => f.size > MAX);
+    if (tooBig) { setUploadMsg(`"${tooBig.name}" 파일이 50MB를 초과합니다.`); e.target.value = ""; return; }
     setUploading(true);
     setUploadMsg("");
     try {
       const formData = new FormData();
       Array.from(files).forEach((f) => formData.append("files", f));
+      formData.append("category", category);
       const res = await fetch(`/api/cases/${id}/evidence`, {
         method: "POST",
         credentials: "include",
@@ -113,19 +130,34 @@ export default function CaseProgress() {
                 {myEvidence.map((ev: any) => (
                   <li key={ev.id} className="flex items-center justify-between bg-gray-50 rounded p-2">
                     <span className="truncate flex-1">{ev.fileName}</span>
-                    <span className="text-xs text-gray-400 ml-2">{(ev.fileSize / 1024).toFixed(0)}KB</span>
+                    {ev.category && ev.category !== "other" && (
+                      <span className="badge bg-gray-200 text-gray-600 text-xs ml-2 shrink-0">{EVIDENCE_CAT_LABEL[ev.category] || ev.category}</span>
+                    )}
+                    <span className="text-xs text-gray-400 ml-2 shrink-0">{(ev.fileSize / 1024).toFixed(0)}KB</span>
                   </li>
                 ))}
               </ul>
             ) : (
               <p className="text-sm text-gray-400 mb-3">업로드된 증거가 없습니다.</p>
             )}
+            <div className="mb-2">
+              <label className="label text-xs">자료 종류</label>
+              <select className="input text-sm" value={category} onChange={(e) => setCategory(e.target.value)} disabled={uploading}>
+                {EVIDENCE_CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
             <label className="btn-secondary w-full text-center block cursor-pointer text-sm">
               {uploading ? "업로드 중..." : "증거 파일 추가"}
               <input type="file" multiple className="hidden" onChange={handleFileUpload} disabled={uploading}
                 accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.zip,.mp4,.mov,.mp3,.wav,.txt" />
             </label>
             {uploadMsg && <p className="text-xs text-center mt-2 text-gray-500">{uploadMsg}</p>}
+            <div className="mt-3 text-xs text-gray-500 bg-blue-50 rounded-lg p-3">
+              <p className="font-semibold text-gray-600 mb-1">제출 권장 자료</p>
+              <p>계약서·약관, 입금/결제내역, 카카오톡·문자 대화, 피해 사진, 통화 녹취 등 피해를 입증할 자료를 종류를 선택해 올려주세요.</p>
+            </div>
           </div>
 
           {/* 법률 도구 */}
