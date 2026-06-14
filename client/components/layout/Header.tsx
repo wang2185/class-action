@@ -18,9 +18,13 @@ export default function Header() {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-6 text-sm">
-          <Link to="/cases" className="text-gray-700 hover:text-primary-500 transition-colors">사건 목록</Link>
-          {user && <Link to="/my" className="text-gray-700 hover:text-primary-500 transition-colors">내 사건</Link>}
+        <nav className="hidden md:flex items-center gap-5 text-sm">
+          <Link to="/guide" className="text-gray-700 hover:text-primary-500 transition-colors whitespace-nowrap">사용 안내</Link>
+          <Link to="/lawyer" className="text-gray-700 hover:text-primary-500 transition-colors whitespace-nowrap">변호사</Link>
+          <Link to="/request" className="text-gray-700 hover:text-primary-500 transition-colors whitespace-nowrap">사건 요청</Link>
+          <Link to="/cases" className="text-gray-700 hover:text-primary-500 transition-colors whitespace-nowrap">사건 참여</Link>
+          <Link to="/faq" className="text-gray-700 hover:text-primary-500 transition-colors whitespace-nowrap">자주 묻는 질문</Link>
+          {user && <Link to="/my" className="text-gray-700 hover:text-primary-500 transition-colors whitespace-nowrap">내 사건</Link>}
           {isAdmin && <Link to="/admin" className="text-accent-500 hover:text-accent-600 font-semibold transition-colors">관리자</Link>}
         </nav>
 
@@ -51,7 +55,11 @@ export default function Header() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden border-t bg-white px-4 py-3 space-y-2">
-          <Link to="/cases" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>사건 목록</Link>
+          <Link to="/guide" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>사용 안내</Link>
+          <Link to="/lawyer" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>변호사</Link>
+          <Link to="/request" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>사건 요청</Link>
+          <Link to="/cases" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>사건 참여</Link>
+          <Link to="/faq" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>자주 묻는 질문</Link>
           {user && <Link to="/my" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>내 사건</Link>}
           {isAdmin && <Link to="/admin" className="block py-2 text-sm text-accent-500" onClick={() => setMenuOpen(false)}>관리자</Link>}
           <div className="pt-2 border-t flex gap-2">

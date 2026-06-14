@@ -22,7 +22,12 @@ import AdminParties from "./pages/admin/Parties";
 import AdminCaseUpdate from "./pages/admin/CaseUpdateForm";
 import AdminDefendants from "./pages/admin/Defendants";
 import CasePackage from "./pages/admin/CasePackage";
+import AdminCaseRequests from "./pages/admin/CaseRequests";
 import Privacy from "./pages/Privacy";
+import Guide from "./pages/Guide";
+import Lawyer from "./pages/Lawyer";
+import CaseRequest from "./pages/CaseRequest";
+import Faq from "./pages/Faq";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -61,6 +66,10 @@ export default function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/cases" element={<CaseList />} />
               <Route path="/cases/:id" element={<CaseDetail />} />
+              <Route path="/guide" element={<Guide />} />
+              <Route path="/lawyer" element={<Lawyer />} />
+              <Route path="/request" element={<CaseRequest />} />
+              <Route path="/faq" element={<Faq />} />
               <Route path="/privacy" element={<Privacy />} />
 
               {/* 로그인 필수 */}
@@ -83,6 +92,7 @@ export default function App() {
               <Route path="/admin/cases/:id/update" element={<AdminRoute><AdminCaseUpdate /></AdminRoute>} />
               <Route path="/admin/cases/:id/defendants" element={<AdminRoute><AdminDefendants /></AdminRoute>} />
               <Route path="/admin/cases/:id/package" element={<LawyerRoute><CasePackage /></LawyerRoute>} />
+              <Route path="/admin/case-requests" element={<AdminRoute><AdminCaseRequests /></AdminRoute>} />
             </Routes>
           </main>
           <Footer />

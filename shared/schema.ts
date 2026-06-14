@@ -292,6 +292,26 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── 사건 요청 (제보 — "이런 피해가 있다, 사건을 열어달라") ───
+export const caseRequests = pgTable("case_requests", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(), // 요청자 이름
+  phone: varchar("phone", { length: 20 }).notNull(), // 연락처
+  email: varchar("email", { length: 255 }), // 이메일(선택)
+  category: varchar("category", { length: 100 }), // 피해 유형(분양/투자/소비자/임금/전세 등)
+  title: varchar("title", { length: 500 }).notNull(), // 한 줄 요약
+  opponent: varchar("opponent", { length: 500 }), // 가해자/상대방(회사·개인)
+  content: text("content").notNull(), // 피해 내용 상세
+  headcount: varchar("headcount", { length: 100 }), // 예상 피해자 규모(대략)
+  damageScale: varchar("damage_scale", { length: 100 }), // 예상 피해 금액(대략)
+  status: varchar("status", { length: 30 }).notNull().default("new"),
+  // new(접수) → reviewing(검토중) → accepted(채택·개설예정) → declined(반려) → converted(사건개설완료)
+  adminNote: text("admin_note"), // 내부 메모
+  userId: integer("user_id"), // 로그인 상태로 제출 시(선택)
+  ipAddress: varchar("ip_address", { length: 45 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── 세션 (express-session) ───
 export const sessions = pgTable("session", {
   sid: varchar("sid").primaryKey(),
@@ -358,3 +378,5 @@ export type Consent = typeof consents.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type PaymentLink = typeof paymentLinks.$inferSelect;
+export type CaseRequest = typeof caseRequests.$inferSelect;
+export type InsertCaseRequest = typeof caseRequests.$inferInsert;

@@ -40,6 +40,9 @@ export default function Landing() {
               <Link to="/cases" className="btn-accent text-base px-7 py-3.5">진행 중인 사건 보기</Link>
               <Link to="/register" className="btn-secondary text-base px-7 py-3.5">회원가입</Link>
             </div>
+            <p className="mt-4 text-sm text-ink-muted">
+              등록된 사건이 없나요? <Link to="/request" className="text-primary-600 font-semibold hover:underline">새로운 사건 요청하기 →</Link>
+            </p>
             <div className="flex flex-wrap gap-x-7 gap-y-2 mt-9 text-sm text-ink-muted">
               {["전자서명 간편 위임", "실시간 진행 알림", "안전한 온라인 결제"].map((t) => (
                 <span key={t} className="inline-flex items-center gap-2">

@@ -6,14 +6,14 @@ import { db } from "./db";
 import {
   users, cases, caseParties, evidence, caseUpdates,
   paymentOrders, provisionalSeizures, paymentSessions, paymentTransactions,
-  billingKeys, defendants, defendantDocuments, consents, auditLogs, paymentLinks, notifications,
+  billingKeys, defendants, defendantDocuments, consents, auditLogs, paymentLinks, notifications, caseRequests,
 } from "../shared/schema";
 import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireLawyer, hashPassword, loginWithSessionRegeneration } from "./auth";
 import { encryptPII, decryptPII } from "./crypto";
 import { upload, deleteFile } from "./storage";
 import { assembleDossier, buildPackageZip } from "./casePackage";
-import { sendSMS, notifyParty, mapWithConcurrency } from "./notify";
+import { sendSMS, sendEmail, notifyParty, mapWithConcurrency } from "./notify";
 import {
   createPaymentSession, validatePaymentCallback,
   requestPaymentApproval, completePayment, generatePaymentFormHTML, cancelPayment,
@@ -28,6 +28,13 @@ const PUBLIC_BASE = (process.env.PUBLIC_BASE_URL || process.env.CORS_ORIGIN || "
 const payLinkLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
+  message: { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+});
+
+// 사건 요청(제보) 공개 제출 전용 rate limiter — 스팸 방지(IP당 15분 8건)
+const caseRequestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
   message: { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
 });
 
@@ -81,6 +88,27 @@ async function notifyCaseParties(caseId: number, update: { id: number; title: st
   });
 }
 
+// 새 사건 요청(제보) 접수 시 윈스(허왕)에게 알림. ADMIN_ALERT_PHONE(SMS)+ADMIN_ALERT_EMAIL(메일).
+async function notifyNewCaseRequest(reqId: number, data: { name: string; phone: string; title: string; category?: string | null; opponent?: string | null }) {
+  const adminUrl = `${PUBLIC_BASE}/admin/case-requests`;
+  const ctx = { templateKey: "case_request_new", dedupeKey: `case_request:${reqId}` };
+  const smsText = `[로사이어티] 새 사건 요청 접수\n${oneLine(data.title)}\n요청자: ${oneLine(data.name)}\n확인: ${adminUrl}`;
+  const adminPhone = process.env.ADMIN_ALERT_PHONE;
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL;
+  if (adminPhone) await sendSMS(adminPhone, smsText, ctx);
+  if (adminEmail) {
+    const html = `<div style="font-family:sans-serif;line-height:1.7;color:#1f2937;">
+<p style="font-weight:700;">새 사건 요청이 접수되었습니다.</p>
+<p>제목: ${escapeHtml(data.title)}</p>
+<p>유형: ${escapeHtml(data.category || "-")}</p>
+<p>상대방: ${escapeHtml(data.opponent || "-")}</p>
+<p>요청자: ${escapeHtml(data.name)} (${escapeHtml(data.phone)})</p>
+<p style="margin-top:12px;"><a href="${adminUrl}">관리자에서 확인하기</a></p>
+</div>`;
+    await sendEmail(adminEmail, `[로사이어티] 새 사건 요청 — ${oneLine(data.title)}`, html, ctx);
+  }
+}
+
 // 감사 로그 기록 헬퍼
 async function logAudit(req: Request, action: string, tableName?: string, recordId?: number, details?: string) {
   try {
@@ -100,6 +128,22 @@ function stripPII(obj: any): any {
   if (!obj) return obj;
   const { residentNumber, signatureImage, password, ...safe } = obj;
   return safe;
+}
+
+// HTML 이스케이프(이메일 본문에 사용자 입력 삽입 시) — 저장형 HTML 인젝션 방지
+const HTML_ESC: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+function escapeHtml(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => HTML_ESC[c]);
+}
+// 개행 제거(메일 제목·SMS 한 줄 필드에 사용 — 헤더/표시 깨짐 방지)
+function oneLine(s: unknown): string {
+  return String(s ?? "").replace(/[\r\n]+/g, " ").trim();
+}
+// 코드포인트 단위 안전 절단(서러게이트 페어 분리로 인한 잘못된 UTF-8 방지)
+function clip(v: unknown, max: number): string {
+  if (typeof v !== "string") return "";
+  const t = v.trim();
+  return Array.from(t).slice(0, max).join("");
 }
 
 export function registerRoutes(app: Express) {
@@ -1588,6 +1632,88 @@ export function registerRoutes(app: Express) {
   // ═══════════════════════════════════════════
   // 외부 서비스 연동 URL
   // ═══════════════════════════════════════════
+  // ═══════════════════════════════════════════
+  // 사건 요청 (제보) — 공개 제출 + 관리자 처리
+  // ═══════════════════════════════════════════
+  app.post("/api/case-requests", caseRequestLimiter, async (req: Request, res: Response) => {
+    try {
+      const b = req.body || {};
+      // 허니팟: 봇이 채우는 숨김 필드. 채워졌으면 정상 응답하되 저장하지 않음.
+      if (typeof b.website === "string" && b.website.trim()) return res.json({ ok: true });
+      // 개인정보 수집·이용 동의(서버측 강제 — PIPA)
+      if (b.agree !== true) {
+        return res.status(400).json({ error: "개인정보 수집·이용에 동의해주세요." });
+      }
+      const name = clip(b.name, 100);
+      const phoneDigits = clip(b.phone, 20).replace(/[^0-9]/g, "");
+      const title = clip(b.title, 500);
+      const content = clip(b.content, 5000);
+      if (!name || !phoneDigits || !title || !content) {
+        return res.status(400).json({ error: "이름·연락처·제목·내용은 필수입니다." });
+      }
+      if (phoneDigits.length < 9 || phoneDigits.length > 11) {
+        return res.status(400).json({ error: "연락처를 정확히 입력해주세요." });
+      }
+      const emailRaw = clip(b.email, 255);
+      if (emailRaw && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailRaw)) {
+        return res.status(400).json({ error: "이메일 형식을 확인해주세요." });
+      }
+      const email = emailRaw || null;
+      const [created] = await db.insert(caseRequests).values({
+        name,
+        phone: phoneDigits,
+        email,
+        category: clip(b.category, 100) || null,
+        title,
+        opponent: clip(b.opponent, 500) || null,
+        content,
+        headcount: clip(b.headcount, 100) || null,
+        damageScale: clip(b.damageScale, 100) || null,
+        userId: (req.user as any)?.id || null,
+        ipAddress: req.ip || req.headers["x-forwarded-for"]?.toString() || null,
+      }).returning();
+      // 윈스 알림은 비차단(실패해도 접수는 성공 처리)
+      notifyNewCaseRequest(created.id, { name, phone: phoneDigits, title, category: created.category, opponent: created.opponent })
+        .catch((e) => console.error("사건요청 알림 오류:", e));
+      res.json({ ok: true, id: created.id });
+    } catch (e) {
+      console.error("사건요청 접수 오류:", e);
+      res.status(500).json({ error: "접수 중 오류가 발생했습니다." });
+    }
+  });
+
+  app.get("/api/admin/case-requests", requireAdmin, async (req, res) => {
+    try {
+      const allowed = ["new", "reviewing", "accepted", "declined", "converted"];
+      const status = typeof req.query.status === "string" && allowed.includes(req.query.status) ? req.query.status : undefined;
+      const rows = await db.select().from(caseRequests)
+        .where(status ? eq(caseRequests.status, status) : undefined)
+        .orderBy(desc(caseRequests.createdAt));
+      await logAudit(req, "view_case_requests", "case_requests");
+      res.json(rows);
+    } catch (e) {
+      res.status(500).json({ error: "조회 실패" });
+    }
+  });
+
+  app.patch("/api/admin/case-requests/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const allowed = ["new", "reviewing", "accepted", "declined", "converted"];
+      const patch: any = {};
+      if (typeof req.body?.status === "string" && allowed.includes(req.body.status)) patch.status = req.body.status;
+      if (typeof req.body?.adminNote === "string") patch.adminNote = req.body.adminNote.slice(0, 2000);
+      if (!Object.keys(patch).length) return res.status(400).json({ error: "변경할 내용이 없습니다." });
+      const [updated] = await db.update(caseRequests).set(patch).where(eq(caseRequests.id, id)).returning();
+      if (!updated) return res.status(404).json({ error: "요청을 찾을 수 없습니다." });
+      await logAudit(req, "update_case_request", "case_requests", id, patch.status);
+      res.json(updated);
+    } catch (e) {
+      res.status(500).json({ error: "수정 실패" });
+    }
+  });
+
   app.get("/api/integrations", (req, res) => {
     res.json({
       docurepeat: process.env.DOCUREPEAT_URL || "https://docurepeat.com",

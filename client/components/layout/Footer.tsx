@@ -39,8 +39,8 @@ export default function Footer() {
 
       {/* Footer 정보 */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 gap-8">
-          <div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-2">
             <h3 className="text-white font-bold mb-1">로사이어티 <span className="text-gray-400 font-normal">집단소송</span></h3>
             <p className="text-sm text-gray-500 mb-3">법무법인 윈스 · 허왕 변호사</p>
             <p className="text-sm leading-relaxed">
@@ -52,9 +52,18 @@ export default function Footer() {
             </p>
           </div>
           <div>
-            <h3 className="text-white font-bold mb-3">서비스</h3>
+            <h3 className="text-white font-bold mb-3">바로가기</h3>
             <div className="space-y-2 text-sm">
-              <Link to="/cases" className="block hover:text-white transition-colors">집단소송 참여</Link>
+              <Link to="/guide" className="block hover:text-white transition-colors">사용 안내</Link>
+              <Link to="/lawyer" className="block hover:text-white transition-colors">변호사</Link>
+              <Link to="/request" className="block hover:text-white transition-colors">사건 요청</Link>
+              <Link to="/cases" className="block hover:text-white transition-colors">사건 참여</Link>
+              <Link to="/faq" className="block hover:text-white transition-colors">자주 묻는 질문</Link>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-white font-bold mb-3">윈스의 다른 서비스</h3>
+            <div className="space-y-2 text-sm">
               <a href="https://day.lawyer" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">법률 상담 구독</a>
               <a href="https://willsave.co.kr" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">유언장 서비스</a>
             </div>
