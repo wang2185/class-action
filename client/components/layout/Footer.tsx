@@ -45,9 +45,8 @@ export default function Footer() {
             <p className="text-sm text-gray-500 mb-3">법무법인 윈스 · 허왕 변호사</p>
             <p className="text-sm leading-relaxed">
               법무법인 윈스<br />
-              서울특별시 서초구 서초대로 301, 동익성봉빌딩 12층<br />
-              TEL: 02-585-2927 | FAX: 02-585-2928<br />
-              사업자등록번호: 264-81-03078
+              서울특별시 강남구 삼성로 566, 2층 (삼성동, 빌딩엠) 06163<br />
+              TEL: 02-556-6800 | FAX: 02-556-6809
             </p>
           </div>
           <div>
