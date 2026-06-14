@@ -35,7 +35,7 @@ export default function LegalTools() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-2">통합 법률 도구</h1>
-      <p className="text-gray-500 mb-8">단체소송에 필요한 법률 도구를 한 곳에서 이용하세요.</p>
+      <p className="text-gray-500 mb-8">집단소송에 필요한 법률 도구를 한 곳에서 이용하세요.</p>
 
       <div className="grid md:grid-cols-2 gap-6 mb-12">
         {tools.map((tool) => (

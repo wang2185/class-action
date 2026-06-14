@@ -10,11 +10,11 @@ export default function Header() {
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">허</span>
+          <div className="w-8 h-8 bg-primary-500 rounded-xl flex items-center justify-center">
+            <span className="text-white font-bold text-sm">L</span>
           </div>
-          <span className="font-bold text-lg text-primary-500">허왕 변호사</span>
-          <span className="text-xs text-gray-400 hidden sm:inline">단체소송 · 법무법인 윈스</span>
+          <span className="font-bold text-lg text-primary-600">로사이어티</span>
+          <span className="text-xs text-gray-400 hidden sm:inline">집단소송 · 법무법인 윈스</span>
         </Link>
 
         {/* Desktop Nav */}

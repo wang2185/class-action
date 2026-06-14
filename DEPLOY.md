@@ -1,6 +1,6 @@
 # class-action 배포 런북
 
-법무법인 윈스 단체소송 관리 플랫폼 (허왕 변호사). 운영 도메인 `class.lawciety.com`.
+로사이어티 집단소송 (법무법인 윈스 · 허왕 변호사). 운영 도메인 `class.lawciety.com`.
 서버는 `127.0.0.1:5001` 단일 포트, Nginx 리버스 프록시 뒤(`trust proxy 1`), prod에서 `dist/public` SPA를 Express가 직접 서빙.
 
 ## 1. 빌드/실행

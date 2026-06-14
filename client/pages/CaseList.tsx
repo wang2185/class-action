@@ -16,7 +16,7 @@ export default function CaseList() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">단체소송 사건 목록</h1>
+      <h1 className="text-3xl font-bold mb-6">집단소송 사건 목록</h1>
 
       {/* 필터 */}
       <div className="flex flex-wrap gap-2 mb-6">

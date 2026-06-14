@@ -635,7 +635,7 @@ export function registerRoutes(app: Express) {
       const html = generatePaymentFormHTML({
         orderId: session.orderId,
         amount: session.amount,
-        goodsName: `[착수금] ${caseData?.title || "단체소송"}`,
+        goodsName: `[착수금] ${caseData?.title || "집단소송"}`,
         buyerName: party?.name || "고객",
         buyerTel: party?.phone || "",
         buyerEmail: party?.email || "",
@@ -826,7 +826,7 @@ export function registerRoutes(app: Express) {
 
       const html = generatePaymentFormHTML({
         orderId: session.orderId, amount: session.amount,
-        goodsName: link.goodsName || `[결제] ${caseData?.title || "단체소송"}`,
+        goodsName: link.goodsName || `[결제] ${caseData?.title || "집단소송"}`,
         buyerName: party?.name || "고객", buyerTel: party?.phone || "", buyerEmail: party?.email || "",
         returnUrl: `${PUBLIC_BASE}/api/nicepay/callback`,
         merchantId: session.merchantId, ediDate: session.ediDate, signData: session.signData,
@@ -941,7 +941,7 @@ export function registerRoutes(app: Express) {
       const result = await approveBillingPayment({
         bid: bk.bid,
         amount: parseInt(amount),
-        goodsName: goodsName || "[성공보수] 단체소송",
+        goodsName: goodsName || "[성공보수] 집단소송",
         moid,
         cardInterest: "0",
       });

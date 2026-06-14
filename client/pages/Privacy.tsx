@@ -9,7 +9,7 @@ export default function Privacy() {
       <div className="prose prose-sm max-w-none space-y-8 text-gray-700">
         <section>
           <h2 className="text-xl font-bold text-gray-900">제1조 (개인정보의 처리 목적)</h2>
-          <p>법무법인 윈스(이하 "회사")는 단체소송 플랫폼(class.lawciety.com, 이하 "서비스")에서 다음의 목적을 위하여 개인정보를 처리합니다.</p>
+          <p>법무법인 윈스(이하 "회사")는 로사이어티 집단소송(class.lawciety.com, 이하 "서비스")에서 다음의 목적을 위하여 개인정보를 처리합니다.</p>
           <ol className="list-decimal pl-5 space-y-1">
             <li><strong>회원 가입 및 관리:</strong> 회원제 서비스 이용에 따른 본인 확인, 연락, 고지사항 전달</li>
             <li><strong>소송 당사자 등록:</strong> 소장 작성, 수임계약 체결, 소송 진행을 위한 당사자 정보 수집</li>

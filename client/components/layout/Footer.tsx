@@ -41,8 +41,8 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid md:grid-cols-3 gap-8">
           <div>
-            <h3 className="text-white font-bold mb-1">허왕 변호사</h3>
-            <p className="text-sm text-gray-500 mb-3">단체소송 · 법무법인 윈스</p>
+            <h3 className="text-white font-bold mb-1">로사이어티 <span className="text-gray-400 font-normal">집단소송</span></h3>
+            <p className="text-sm text-gray-500 mb-3">법무법인 윈스 · 허왕 변호사</p>
             <p className="text-sm leading-relaxed">
               법무법인 윈스<br />
               서울특별시 서초구 서초대로 301, 동익성봉빌딩 12층<br />
@@ -53,7 +53,7 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-bold mb-3">서비스</h3>
             <div className="space-y-2 text-sm">
-              <Link to="/cases" className="block hover:text-white transition-colors">단체소송 참여</Link>
+              <Link to="/cases" className="block hover:text-white transition-colors">집단소송 참여</Link>
               <Link to="/tools" className="block hover:text-white transition-colors">법률 도구</Link>
               <a href="https://day.lawyer" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">법률 상담 구독</a>
               <a href="https://willsave.co.kr" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">유언장 서비스</a>

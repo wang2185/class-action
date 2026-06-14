@@ -23,7 +23,7 @@ export default function ShareButtons({ caseId, title, summary, image }: Props) {
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const shareUrl = `${origin}/cases/${caseId}`;
-  const desc = (summary || "단체소송 참여자를 모집합니다").slice(0, 100);
+  const desc = (summary || "집단소송 참여자를 모집합니다").slice(0, 100);
   const imageUrl = image
     ? image.startsWith("http")
       ? image

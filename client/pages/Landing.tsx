@@ -26,7 +26,7 @@ export default function Landing() {
         <div className="relative max-w-7xl mx-auto px-4 py-20 md:py-28">
           <div className="max-w-3xl animate-fade-up">
             <span className="inline-flex items-center gap-2 bg-primary-100 text-primary-700 text-sm font-semibold px-3.5 py-1.5 rounded-full mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary-500" /> 법무법인 윈스 · 허왕 변호사 단체소송
+              <span className="w-1.5 h-1.5 rounded-full bg-primary-500" /> 로사이어티 · 허왕 변호사가 이끄는 집단소송
             </span>
             <h1 className="text-4xl md:text-[3.4rem] font-extrabold leading-[1.15] text-ink mb-6">
               혼자선 막막한 피해,<br />
@@ -57,7 +57,7 @@ export default function Landing() {
         <h2 className="text-2xl font-bold text-center mb-12">참여 절차</h2>
         <div className="grid md:grid-cols-5 gap-6">
           {[
-            { step: "01", title: "사건 확인", desc: "진행 중인 단체소송 확인" },
+            { step: "01", title: "사건 확인", desc: "진행 중인 집단소송 확인" },
             { step: "02", title: "참여 신청", desc: "당사자 정보 및 증거 제출" },
             { step: "03", title: "수임계약", desc: "전자서명으로 간편 체결" },
             { step: "04", title: "착수금 결제", desc: "안전한 온라인 결제" },

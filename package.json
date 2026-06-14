@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "private": true,
-  "description": "단체소송 관리 플랫폼 - 법무법인 윈스",
+  "description": "로사이어티 집단소송 - 법무법인 윈스 (허왕 변호사)",
   "scripts": {
     "dev": "tsx server/index.ts",
     "build": "vite build && esbuild server/index.ts --bundle --platform=node --outdir=dist --format=esm --packages=external",
