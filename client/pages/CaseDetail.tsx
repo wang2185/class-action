@@ -2,6 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
 import { useAuth } from "../hooks/use-auth";
+import ShareButtons from "../components/ShareButtons";
 
 const STATUS_LABELS: Record<string, string> = {
   recruiting: "모집중", filed: "소 제기", in_progress: "진행중", settled: "합의", closed: "종결",
@@ -94,6 +95,13 @@ export default function CaseDetail() {
               {c.filingDate && <div className="flex justify-between"><dt className="text-gray-500">소제기일</dt><dd>{new Date(c.filingDate).toLocaleDateString("ko-KR")}</dd></div>}
             </dl>
           </div>
+
+          <ShareButtons
+            caseId={id!}
+            title={c.title}
+            summary={c.summary}
+            image={c.coverImage}
+          />
 
           {/* 참여 상태별 버튼 */}
           <div className="card space-y-3">

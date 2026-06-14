@@ -4,9 +4,11 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import { setupAuth } from "./auth";
 import { registerRoutes } from "./routes";
+import { buildCaseOg, injectCaseOg } from "./og";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -22,9 +24,9 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://web.nicepay.co.kr", "https://sandbox.nicepay.co.kr"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://web.nicepay.co.kr", "https://sandbox.nicepay.co.kr", "https://t1.kakaocdn.net", "https://developers.kakao.com"],
         frameSrc: ["'self'", "https://web.nicepay.co.kr", "https://sandbox.nicepay.co.kr"],
-        connectSrc: ["'self'", "https://webapi.nicepay.co.kr", "https://sandbox.nicepay.co.kr"],
+        connectSrc: ["'self'", "https://webapi.nicepay.co.kr", "https://sandbox.nicepay.co.kr", "https://*.kakao.com", "https://*.kakaocdn.net"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
         fontSrc: ["'self'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
@@ -65,12 +67,26 @@ app.use("/uploads", express.static(path.resolve("public/uploads")));
 // SPA - serve built frontend
 if (isProd) {
   const publicDir = path.resolve(__dirname, "public");
-  app.use(express.static(publicDir));
-  app.get("*", (req, res) => {
+  const indexPath = path.join(publicDir, "index.html");
+  let indexHtml = "";
+  try {
+    indexHtml = fs.readFileSync(indexPath, "utf-8");
+  } catch (e) {
+    console.error("index.html 로드 실패:", e);
+  }
+  app.use(express.static(publicDir, { index: false }));
+  app.get("*", async (req, res) => {
     if (req.path.startsWith("/api/")) {
       return res.status(404).json({ error: "API 경로를 찾을 수 없습니다." });
     }
-    res.sendFile(path.join(publicDir, "index.html"));
+    if (!indexHtml) return res.sendFile(indexPath);
+    // 사건 상세는 사건별 OG 메타 주입(카카오톡/페북 링크 미리보기)
+    const m = req.path.match(/^\/cases\/(\d+)\/?$/);
+    if (m) {
+      const og = await buildCaseOg(parseInt(m[1], 10));
+      if (og) return res.send(injectCaseOg(indexHtml, og));
+    }
+    res.send(indexHtml);
   });
 }
 
