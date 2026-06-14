@@ -88,8 +88,8 @@ export default function Privacy() {
             <tbody>
               <tr><td className="border p-2 bg-gray-50 font-medium w-1/3">개인정보 보호책임자</td><td className="border p-2">허왕 변호사</td></tr>
               <tr><td className="border p-2 bg-gray-50 font-medium">소속</td><td className="border p-2">법무법인 윈스</td></tr>
-              <tr><td className="border p-2 bg-gray-50 font-medium">연락처</td><td className="border p-2">TEL: 02-585-2927 | Email: king@wanghuh.com</td></tr>
-              <tr><td className="border p-2 bg-gray-50 font-medium">주소</td><td className="border p-2">서울특별시 서초구 서초대로 301, 동익성봉빌딩 12층</td></tr>
+              <tr><td className="border p-2 bg-gray-50 font-medium">연락처</td><td className="border p-2">TEL: 02-556-6800 | Email: king@wanghuh.com</td></tr>
+              <tr><td className="border p-2 bg-gray-50 font-medium">주소</td><td className="border p-2">서울특별시 강남구 삼성로 566, 2층 (삼성동, 빌딩엠)</td></tr>
             </tbody>
           </table>
         </section>
