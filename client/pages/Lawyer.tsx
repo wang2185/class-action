@@ -33,10 +33,12 @@ export default function Lawyer() {
           style={{ background: "radial-gradient(circle, rgba(59,110,240,0.10), transparent 70%)" }} />
         <div className="relative max-w-5xl mx-auto px-4 py-16 md:py-20">
           <div className="flex flex-col md:flex-row items-center gap-10 animate-fade-up">
-            {/* 프로필 자리 (사진 추후 교체) */}
-            <div className="w-40 h-40 md:w-48 md:h-48 rounded-3xl bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center shrink-0 shadow-lift">
-              <span className="text-6xl font-extrabold">허</span>
-            </div>
+            {/* 허왕 변호사 프로필 사진 */}
+            <img
+              src="/lawyer-heowang.jpg"
+              alt="허왕 변호사"
+              className="w-40 h-48 md:w-52 md:h-64 rounded-3xl object-cover object-top shrink-0 shadow-lift ring-1 ring-primary-100 bg-white"
+            />
             <div className="text-center md:text-left">
               <span className="inline-flex items-center gap-2 bg-accent-50 text-accent-700 text-sm font-semibold px-3.5 py-1.5 rounded-full mb-4">
                 대표변호사
