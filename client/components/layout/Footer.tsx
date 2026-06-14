@@ -55,7 +55,6 @@ export default function Footer() {
             <h3 className="text-white font-bold mb-3">서비스</h3>
             <div className="space-y-2 text-sm">
               <Link to="/cases" className="block hover:text-white transition-colors">집단소송 참여</Link>
-              <Link to="/tools" className="block hover:text-white transition-colors">법률 도구</Link>
               <a href="https://day.lawyer" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">법률 상담 구독</a>
               <a href="https://willsave.co.kr" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">유언장 서비스</a>
             </div>

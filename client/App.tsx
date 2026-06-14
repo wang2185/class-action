@@ -13,7 +13,6 @@ import Contract from "./pages/Contract";
 import Payment from "./pages/Payment";
 import PaymentResult from "./pages/PaymentResult";
 import CaseProgress from "./pages/CaseProgress";
-import LegalTools from "./pages/LegalTools";
 import PaymentOrderForm from "./pages/PaymentOrderForm";
 import SeizureForm from "./pages/SeizureForm";
 import BillingKeyRegister from "./pages/BillingKeyRegister";
@@ -62,7 +61,6 @@ export default function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/cases" element={<CaseList />} />
               <Route path="/cases/:id" element={<CaseDetail />} />
-              <Route path="/tools" element={<LegalTools />} />
               <Route path="/privacy" element={<Privacy />} />
 
               {/* 로그인 필수 */}

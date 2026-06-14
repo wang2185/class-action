@@ -104,36 +104,6 @@ export default function Landing() {
         </section>
       )}
 
-      {/* 법률 도구 + 홍보 */}
-      <section className="max-w-7xl mx-auto px-4 py-16">
-        <h2 className="text-2xl font-bold mb-8">통합 법률 도구</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { title: "문서 자동화", desc: "지급명령·가압류 신청서 자동 생성", url: "https://docurepeat.com", color: "bg-blue-500" },
-            { title: "시가 조회", desc: "시가표준액·공시가격 조회", url: "https://gongsi.estate", color: "bg-green-500" },
-            { title: "판례 검색", desc: "대법원 판례 검색", url: "https://day.lawyer/casecrab", color: "bg-purple-500" },
-            { title: "사건 현황", desc: "내 사건 진행 현황 조회", url: "/my", color: "bg-orange-500", internal: true },
-          ].map((tool) => (
-            tool.internal ? (
-              <Link key={tool.title} to={tool.url} className="card hover:shadow-lift hover:-translate-y-1 transition-all duration-200">
-                <div className={`w-10 h-10 ${tool.color} rounded-lg flex items-center justify-center text-white font-bold text-sm mb-3`}>
-                  {tool.title[0]}
-                </div>
-                <h3 className="font-bold mb-1">{tool.title}</h3>
-                <p className="text-sm text-gray-500">{tool.desc}</p>
-              </Link>
-            ) : (
-              <a key={tool.title} href={tool.url} target="_blank" rel="noopener noreferrer" className="card hover:shadow-lift hover:-translate-y-1 transition-all duration-200">
-                <div className={`w-10 h-10 ${tool.color} rounded-lg flex items-center justify-center text-white font-bold text-sm mb-3`}>
-                  {tool.title[0]}
-                </div>
-                <h3 className="font-bold mb-1">{tool.title}</h3>
-                <p className="text-sm text-gray-500">{tool.desc}</p>
-              </a>
-            )
-          ))}
-        </div>
-      </section>
 
       {/* Day Lawyer / WillSave 홍보 */}
       <section className="bg-primary-50 py-16">

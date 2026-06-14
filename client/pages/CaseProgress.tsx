@@ -160,21 +160,6 @@ export default function CaseProgress() {
             </div>
           </div>
 
-          {/* 법률 도구 */}
-          <div className="card">
-            <h3 className="font-bold mb-3">법률 도구</h3>
-            <div className="space-y-2">
-              <a href="https://day.lawyer/casecrab" target="_blank" rel="noopener noreferrer" className="block text-sm text-primary-500 hover:underline">
-                판례 검색 (CaseScraper) →
-              </a>
-              <a href="https://docurepeat.com" target="_blank" rel="noopener noreferrer" className="block text-sm text-primary-500 hover:underline">
-                문서 자동화 (DocuRepeat) →
-              </a>
-              <a href="https://gongsi.estate" target="_blank" rel="noopener noreferrer" className="block text-sm text-primary-500 hover:underline">
-                시가 조회 (Siga-Lookup) →
-              </a>
-            </div>
-          </div>
 
           {/* 홍보 */}
           <a href="https://willsave.co.kr" target="_blank" rel="noopener noreferrer" className="block card bg-purple-50 hover:bg-purple-100 transition-colors">
