@@ -5,45 +5,45 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Porcelain · Teal — 시그니처 틸(회복·정의), 친근한 프리미엄
+        // Cyan-Teal × Cobalt — 밝고 산뜻한 청록(회복·정의) 메인 + 코발트 포인트
         primary: {
-          50: "#F0F9F8",
-          100: "#DCF1EE",
-          200: "#BAE3DD",
-          300: "#8DCEC6",
-          400: "#4FB3A8",
-          500: "#0E8F84",
-          600: "#0A6B62",
-          700: "#0A564F",
-          800: "#0C443F",
-          900: "#0C3631",
+          50: "#ECFBFC",
+          100: "#CFF3F6",
+          200: "#A5E8ED",
+          300: "#6FD6DF",
+          400: "#34BCC9",
+          500: "#0FA6B8",
+          600: "#0B8595",
+          700: "#0C6A77",
+          800: "#0F535E",
+          900: "#103E47",
         },
-        // 코랄 — CTA 포인트(따뜻한 활력)
+        // 코발트 블루 — CTA·포인트
         accent: {
-          50: "#FEF1ED",
-          100: "#FDE0D8",
-          200: "#FBC3B4",
-          400: "#F4866C",
-          500: "#F0674B",
-          600: "#D8543A",
-          700: "#B5432D",
+          50: "#EEF2FE",
+          100: "#DCE4FD",
+          200: "#BCCBFB",
+          400: "#6E8DF6",
+          500: "#3B6EF0",
+          600: "#2553D8",
+          700: "#1E45B0",
         },
-        // 잉크 — 본문·제목(딥 틸블랙)
+        // 잉크 — 본문·제목(가벼운 틸슬레이트)
         ink: {
-          DEFAULT: "#122A2A",
-          soft: "#2C3F3D",
-          muted: "#5C706D",
+          DEFAULT: "#12303A",
+          soft: "#33474E",
+          muted: "#5E737A",
         },
-        porcelain: "#F4FBFA",
+        porcelain: "#F6FCFD",
       },
       fontFamily: {
         sans: ["Pretendard", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
       },
       boxShadow: {
-        soft: "0 1px 2px rgba(18,42,42,0.04), 0 10px 30px -14px rgba(14,143,132,0.18)",
-        card: "0 1px 3px rgba(18,42,42,0.05), 0 14px 30px -16px rgba(14,143,132,0.16)",
-        lift: "0 16px 40px -12px rgba(14,143,132,0.30)",
-        cta: "0 10px 24px -10px rgba(240,103,75,0.45)",
+        soft: "0 1px 2px rgba(18,48,58,0.04), 0 10px 30px -14px rgba(15,166,184,0.20)",
+        card: "0 1px 3px rgba(18,48,58,0.05), 0 14px 30px -16px rgba(15,166,184,0.16)",
+        lift: "0 16px 40px -12px rgba(15,166,184,0.30)",
+        cta: "0 10px 24px -10px rgba(59,110,240,0.42)",
       },
       borderRadius: {
         "2xl": "1.25rem",

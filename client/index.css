@@ -10,8 +10,8 @@
   }
   body {
     font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
-    color: #122A2A;
-    background: #F4FBFA;
+    color: #12303A;
+    background: #F6FCFD;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
@@ -24,8 +24,8 @@
     text-decoration: none;
   }
   ::selection {
-    background: #BAE3DD;
-    color: #0C3631;
+    background: #A5E8ED;
+    color: #103E47;
   }
 }
 

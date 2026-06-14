@@ -20,9 +20,9 @@ export default function Landing() {
       {/* Hero */}
       <section className="relative overflow-hidden bg-porcelain">
         <div className="pointer-events-none absolute -top-40 -right-28 w-[520px] h-[520px] rounded-full opacity-70"
-          style={{ background: "radial-gradient(circle, rgba(14,143,132,0.16), transparent 70%)" }} />
+          style={{ background: "radial-gradient(circle, rgba(15,166,184,0.16), transparent 70%)" }} />
         <div className="pointer-events-none absolute -bottom-48 -left-36 w-[460px] h-[460px] rounded-full opacity-60"
-          style={{ background: "radial-gradient(circle, rgba(240,103,75,0.10), transparent 70%)" }} />
+          style={{ background: "radial-gradient(circle, rgba(59,110,240,0.10), transparent 70%)" }} />
         <div className="relative max-w-7xl mx-auto px-4 py-20 md:py-28">
           <div className="max-w-3xl animate-fade-up">
             <span className="inline-flex items-center gap-2 bg-primary-100 text-primary-700 text-sm font-semibold px-3.5 py-1.5 rounded-full mb-6">
