@@ -18,21 +18,35 @@ export default function Landing() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-gradient-to-br from-primary-500 via-primary-600 to-primary-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-20 md:py-28">
-          <div className="max-w-3xl">
-            <p className="text-accent-400 font-semibold mb-3 tracking-wide">법무법인 윈스</p>
-            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-6">
-              허왕 변호사가 직접 이끄는<br />
-              <span className="text-accent-500">단체소송</span>
+      <section className="relative overflow-hidden bg-porcelain">
+        <div className="pointer-events-none absolute -top-40 -right-28 w-[520px] h-[520px] rounded-full opacity-70"
+          style={{ background: "radial-gradient(circle, rgba(14,143,132,0.16), transparent 70%)" }} />
+        <div className="pointer-events-none absolute -bottom-48 -left-36 w-[460px] h-[460px] rounded-full opacity-60"
+          style={{ background: "radial-gradient(circle, rgba(240,103,75,0.10), transparent 70%)" }} />
+        <div className="relative max-w-7xl mx-auto px-4 py-20 md:py-28">
+          <div className="max-w-3xl animate-fade-up">
+            <span className="inline-flex items-center gap-2 bg-primary-100 text-primary-700 text-sm font-semibold px-3.5 py-1.5 rounded-full mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary-500" /> 법무법인 윈스 · 허왕 변호사 단체소송
+            </span>
+            <h1 className="text-4xl md:text-[3.4rem] font-extrabold leading-[1.15] text-ink mb-6">
+              혼자선 막막한 피해,<br />
+              <span className="text-primary-500">함께</span> 되찾으세요
             </h1>
-            <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed">
-              당사자 모집부터 증거 수집, 수임계약, 소송 진행 현황까지<br />
-              허왕 변호사와 법무법인 윈스가 원스톱으로 함께합니다.
+            <p className="text-lg md:text-xl text-ink-muted mb-9 leading-relaxed">
+              참여 신청부터 자료 제출·수임계약·결제, 소송 진행 알림까지 한곳에서.<br className="hidden md:block" />
+              허왕 변호사와 법무법인 윈스가 끝까지 함께합니다.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <Link to="/cases" className="btn-accent text-base px-8 py-3">진행 중인 사건 보기</Link>
-              <Link to="/register" className="btn bg-white/10 text-white hover:bg-white/20 text-base px-8 py-3 border border-white/30">회원가입</Link>
+            <div className="flex flex-wrap gap-3">
+              <Link to="/cases" className="btn-accent text-base px-7 py-3.5">진행 중인 사건 보기</Link>
+              <Link to="/register" className="btn-secondary text-base px-7 py-3.5">회원가입</Link>
+            </div>
+            <div className="flex flex-wrap gap-x-7 gap-y-2 mt-9 text-sm text-ink-muted">
+              {["전자서명 간편 위임", "실시간 진행 알림", "안전한 온라인 결제"].map((t) => (
+                <span key={t} className="inline-flex items-center gap-2">
+                  <svg className="w-4 h-4 text-primary-500" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10.5l4 4 8-9" /></svg>
+                  {t}
+                </span>
+              ))}
             </div>
           </div>
         </div>
@@ -67,7 +81,7 @@ export default function Landing() {
             <h2 className="text-2xl font-bold mb-8">현재 모집 중인 사건</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {activeCases.slice(0, 6).map((c: any) => (
-                <Link key={c.id} to={`/cases/${c.id}`} className="card hover:shadow-md transition-shadow">
+                <Link key={c.id} to={`/cases/${c.id}`} className="card hover:shadow-lift hover:-translate-y-1 transition-all duration-200">
                   <span className="badge-recruiting mb-3">{STATUS_LABELS[c.status]}</span>
                   <h3 className="font-bold text-lg mb-2 line-clamp-2">{c.title}</h3>
                   <p className="text-sm text-gray-500 mb-3 line-clamp-2">{c.summary}</p>
@@ -101,7 +115,7 @@ export default function Landing() {
             { title: "사건 현황", desc: "내 사건 진행 현황 조회", url: "/my", color: "bg-orange-500", internal: true },
           ].map((tool) => (
             tool.internal ? (
-              <Link key={tool.title} to={tool.url} className="card hover:shadow-md transition-shadow">
+              <Link key={tool.title} to={tool.url} className="card hover:shadow-lift hover:-translate-y-1 transition-all duration-200">
                 <div className={`w-10 h-10 ${tool.color} rounded-lg flex items-center justify-center text-white font-bold text-sm mb-3`}>
                   {tool.title[0]}
                 </div>
@@ -109,7 +123,7 @@ export default function Landing() {
                 <p className="text-sm text-gray-500">{tool.desc}</p>
               </Link>
             ) : (
-              <a key={tool.title} href={tool.url} target="_blank" rel="noopener noreferrer" className="card hover:shadow-md transition-shadow">
+              <a key={tool.title} href={tool.url} target="_blank" rel="noopener noreferrer" className="card hover:shadow-lift hover:-translate-y-1 transition-all duration-200">
                 <div className={`w-10 h-10 ${tool.color} rounded-lg flex items-center justify-center text-white font-bold text-sm mb-3`}>
                   {tool.title[0]}
                 </div>

@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-400 mt-auto">
+    <footer className="bg-ink text-gray-400 mt-auto">
       {/* 홍보 배너 */}
       <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white">
         <div className="max-w-7xl mx-auto px-4 py-8 grid md:grid-cols-2 gap-6">
