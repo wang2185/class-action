@@ -44,9 +44,11 @@ export default function Footer() {
             <h3 className="text-white font-bold mb-1">로사이어티 <span className="text-gray-400 font-normal">집단소송</span></h3>
             <p className="text-sm text-gray-500 mb-3">법무법인 윈스 · 허왕 변호사</p>
             <p className="text-sm leading-relaxed">
-              법무법인 윈스<br />
+              법무법인 윈스 | 대표변호사 허왕, 박형일<br />
               서울특별시 강남구 삼성로 566, 2층 (삼성동, 빌딩엠) 06163<br />
-              TEL: 02-556-6800 | FAX: 02-556-6809
+              TEL: 02-556-6800 | FAX: 02-556-6809<br />
+              사업자등록번호: 557-86-00970<br />
+              통신판매업 신고번호: 제2025-서울강남-00127호
             </p>
           </div>
           <div>
