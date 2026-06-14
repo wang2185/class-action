@@ -49,7 +49,7 @@ export default function CaseList() {
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((c: any) => (
-            <Link key={c.id} to={`/cases/${c.id}`} className="card hover:shadow-md transition-all group">
+            <Link key={c.id} to={`/cases/${c.id}`} className="card hover:shadow-lift hover:-translate-y-1 transition duration-200 group">
               <div className="flex items-center justify-between mb-3">
                 <span className={`badge-${c.status}`}>{STATUS_LABELS[c.status] || c.status}</span>
                 {c.caseType && <span className="text-xs text-gray-400">{c.caseType}</span>}
@@ -63,13 +63,13 @@ export default function CaseList() {
                 </div>
                 <div className="flex justify-between">
                   <span>참여자</span>
-                  <span className="font-medium text-primary-500">
+                  <span className="font-medium text-primary-500 tabular-nums">
                     {c.currentCount}{c.targetCount ? ` / ${c.targetCount}` : ""}명
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>착수금</span>
-                  <span className="font-bold">{(c.retainerFee || 0).toLocaleString()}원</span>
+                  <span className="font-bold tabular-nums">{(c.retainerFee || 0).toLocaleString()}원</span>
                 </div>
               </div>
               {c.status === "recruiting" && (

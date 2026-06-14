@@ -10,7 +10,7 @@ export default function Footer() {
             href="https://day.lawyer"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-4 bg-white/10 rounded-xl p-5 hover:bg-white/20 transition-all"
+            className="flex items-center gap-4 bg-white/10 rounded-xl p-5 hover:bg-white/20 transition"
           >
             <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
               <span className="text-2xl font-bold">D</span>
@@ -24,7 +24,7 @@ export default function Footer() {
             href="https://willsave.co.kr"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-4 bg-white/10 rounded-xl p-5 hover:bg-white/20 transition-all"
+            className="flex items-center gap-4 bg-white/10 rounded-xl p-5 hover:bg-white/20 transition"
           >
             <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
               <span className="text-2xl font-bold">W</span>

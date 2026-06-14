@@ -37,7 +37,7 @@ export default function Lawyer() {
             <img
               src="/lawyer-heowang.jpg"
               alt="허왕 변호사"
-              className="w-40 h-48 md:w-52 md:h-64 rounded-3xl object-cover object-top shrink-0 shadow-lift ring-1 ring-primary-100 bg-white"
+              className="w-40 h-48 md:w-52 md:h-64 rounded-3xl object-cover object-top shrink-0 shadow-lift ring-1 ring-black/10 bg-white"
             />
             <div className="text-center md:text-left">
               <span className="inline-flex items-center gap-2 bg-accent-50 text-accent-700 text-sm font-semibold px-3.5 py-1.5 rounded-full mb-4">

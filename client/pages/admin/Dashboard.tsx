@@ -32,7 +32,7 @@ export default function AdminDashboard() {
         ].map((s) => (
           <div key={s.label} className="card text-center">
             <p className="text-sm text-gray-500">{s.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+            <p className={`text-2xl font-bold mt-1 tabular-nums ${s.color}`}>{s.value}</p>
           </div>
         ))}
       </div>

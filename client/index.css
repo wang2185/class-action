@@ -14,10 +14,13 @@
     background: #F6FCFD;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-wrap: pretty; /* 본문 고아줄 방지 */
   }
   h1, h2, h3, h4 {
     font-weight: 700;
     letter-spacing: -0.02em;
+    text-wrap: balance; /* 제목 줄나눔 균형 */
   }
   a {
     color: inherit;
@@ -31,7 +34,7 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center px-5 py-2.5 rounded-full font-semibold text-sm transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center px-5 py-2.5 rounded-full font-semibold text-sm transition duration-200 active:scale-[0.96] select-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-primary {
     @apply btn bg-primary-500 text-white hover:bg-primary-600 shadow-soft hover:shadow-lift hover:-translate-y-0.5;
@@ -49,7 +52,7 @@
     @apply bg-white rounded-2xl shadow-card border border-primary-100 p-6;
   }
   .input {
-    @apply w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-ink placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400 transition-all;
+    @apply w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-ink placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400 transition;
   }
   .label {
     @apply block text-sm font-medium text-ink-soft mb-1.5;
