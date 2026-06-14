@@ -76,6 +76,25 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      <div className="card mt-6">
+        <h2 className="font-bold text-lg mb-1">내부 도구</h2>
+        <p className="text-sm text-gray-500 mb-4">변호사 업무용 도구 — 고객 화면에는 노출되지 않습니다.</p>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <a href="https://docurepeat.com" target="_blank" rel="noopener noreferrer" className="block rounded-xl border border-primary-100 p-4 hover:bg-primary-50 transition-colors">
+            <p className="font-semibold">문서 자동화</p>
+            <p className="text-xs text-gray-500 mt-1">지급명령·가압류·소장 자동 생성 (DocuRepeat) →</p>
+          </a>
+          <a href="https://gongsi.estate" target="_blank" rel="noopener noreferrer" className="block rounded-xl border border-primary-100 p-4 hover:bg-primary-50 transition-colors">
+            <p className="font-semibold">시가·공시 조회</p>
+            <p className="text-xs text-gray-500 mt-1">시가표준액·공시가격 (gongsi.estate) →</p>
+          </a>
+          <a href="https://day.lawyer/casecrab" target="_blank" rel="noopener noreferrer" className="block rounded-xl border border-primary-100 p-4 hover:bg-primary-50 transition-colors">
+            <p className="font-semibold">판례·사건 검색</p>
+            <p className="text-xs text-gray-500 mt-1">대법원 판례·사건현황 (CaseScraper) →</p>
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

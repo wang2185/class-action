@@ -31,9 +31,6 @@ export default function PaymentOrderForm() {
         <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800">
           <p className="font-semibold mb-1">지급명령이란?</p>
           <p>채권자가 금전 등의 지급을 구하는 경우, 소송 없이 법원에 지급명령을 신청하여 빠르게 집행권원을 확보하는 절차입니다.</p>
-          <a href="https://docurepeat.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline mt-2 inline-block">
-            DocuRepeat에서 신청서 자동 생성 →
-          </a>
         </div>
 
         <div>

@@ -32,14 +32,6 @@ export default function SeizureForm() {
         <div className="bg-yellow-50 rounded-lg p-4 text-sm text-yellow-800">
           <p className="font-semibold mb-1">가압류란?</p>
           <p>채무자의 재산을 미리 동결하여 판결 후 강제집행을 보전하는 절차입니다.</p>
-          <div className="flex gap-3 mt-2">
-            <a href="https://gongsi.estate" target="_blank" rel="noopener noreferrer" className="text-yellow-700 hover:underline">
-              시가 조회 (Siga-Lookup) →
-            </a>
-            <a href="https://docurepeat.com" target="_blank" rel="noopener noreferrer" className="text-yellow-700 hover:underline">
-              신청서 자동 생성 (DocuRepeat) →
-            </a>
-          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -77,9 +69,6 @@ export default function SeizureForm() {
         <div>
           <label className="label">재산 시가 (원)</label>
           <input type="number" className="input" value={form.propertyValue} onChange={(e) => update("propertyValue", e.target.value)} />
-          <p className="text-xs text-gray-400 mt-1">
-            부동산 시가는 <a href="https://gongsi.estate" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline">gongsi.estate</a>에서 조회 가능합니다.
-          </p>
         </div>
 
         <div>
