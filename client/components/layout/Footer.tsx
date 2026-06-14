@@ -41,8 +41,10 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid md:grid-cols-3 gap-8">
           <div>
-            <h3 className="text-white font-bold mb-3">법무법인 윈스</h3>
+            <h3 className="text-white font-bold mb-1">허왕 변호사</h3>
+            <p className="text-sm text-gray-500 mb-3">단체소송 · 법무법인 윈스</p>
             <p className="text-sm leading-relaxed">
+              법무법인 윈스<br />
               서울특별시 서초구 서초대로 301, 동익성봉빌딩 12층<br />
               TEL: 02-585-2927 | FAX: 02-585-2928<br />
               사업자등록번호: 264-81-03078
@@ -68,7 +70,7 @@ export default function Footer() {
         </div>
         <div className="mt-8 pt-6 border-t border-gray-800 text-xs text-center space-y-1">
           <div><Link to="/privacy" className="hover:text-white transition-colors">개인정보처리방침</Link></div>
-          <div>&copy; {new Date().getFullYear()} 법무법인 윈스. All rights reserved.</div>
+          <div>&copy; {new Date().getFullYear()} 법무법인 윈스 · 허왕 변호사. All rights reserved.</div>
         </div>
       </div>
     </footer>

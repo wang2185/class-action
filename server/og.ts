@@ -35,8 +35,8 @@ export async function buildCaseOg(id: number): Promise<CaseOg | null> {
   try {
     const [c] = await db.select().from(cases).where(eq(cases.id, id)).limit(1);
     if (c) {
-      const title = `${c.title} | 법무법인 윈스 단체소송`;
-      const description = (c.summary || c.description || "단체소송 참여자를 모집합니다 - 법무법인 윈스")
+      const title = `${c.title} | 허왕 변호사 단체소송`;
+      const description = (c.summary || c.description || "허왕 변호사(법무법인 윈스)와 함께하는 단체소송 — 참여자를 모집합니다")
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, 150);
@@ -68,7 +68,7 @@ export function injectCaseOg(html: string, og: CaseOg): string {
     `<title>${t}</title>`,
     `<meta name="description" content="${d}" />`,
     `<meta property="og:type" content="website" />`,
-    `<meta property="og:site_name" content="법무법인 윈스 단체소송" />`,
+    `<meta property="og:site_name" content="허왕 변호사 단체소송" />`,
     `<meta property="og:title" content="${t}" />`,
     `<meta property="og:description" content="${d}" />`,
     `<meta property="og:image" content="${img}" />`,

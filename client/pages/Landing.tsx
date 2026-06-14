@@ -21,14 +21,14 @@ export default function Landing() {
       <section className="bg-gradient-to-br from-primary-500 via-primary-600 to-primary-800 text-white">
         <div className="max-w-7xl mx-auto px-4 py-20 md:py-28">
           <div className="max-w-3xl">
+            <p className="text-accent-400 font-semibold mb-3 tracking-wide">법무법인 윈스</p>
             <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-6">
-              함께하면 강해지는<br />
-              <span className="text-accent-500">단체소송</span> 플랫폼
+              허왕 변호사가 직접 이끄는<br />
+              <span className="text-accent-500">단체소송</span>
             </h1>
             <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed">
-              법무법인 윈스가 운영하는 단체소송 플랫폼입니다.<br />
               당사자 모집부터 증거 수집, 수임계약, 소송 진행 현황까지<br />
-              원스톱으로 관리합니다.
+              허왕 변호사와 법무법인 윈스가 원스톱으로 함께합니다.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link to="/cases" className="btn-accent text-base px-8 py-3">진행 중인 사건 보기</Link>
