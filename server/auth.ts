@@ -106,13 +106,26 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Middleware: 관리자 필수
+// Middleware: 관리자 필수 (lawyer 는 관리자 권한 전부 보유)
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "로그인이 필요합니다." });
   }
-  if ((req.user as any).role !== "admin") {
+  const role = (req.user as any).role;
+  if (role !== "admin" && role !== "lawyer") {
     return res.status(403).json({ error: "관리자 권한이 필요합니다." });
+  }
+  next();
+}
+
+// Middleware: 변호사 필수 (전환기 — admin 도 허용. 비변호사 직원 계정 도입 시 lawyer 전용으로 좁힐 것)
+export function requireLawyer(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "로그인이 필요합니다." });
+  }
+  const role = (req.user as any).role;
+  if (role !== "lawyer" && role !== "admin") {
+    return res.status(403).json({ error: "변호사 권한이 필요합니다." });
   }
   next();
 }

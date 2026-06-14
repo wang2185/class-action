@@ -22,6 +22,7 @@ import AdminCaseForm from "./pages/admin/CaseForm";
 import AdminParties from "./pages/admin/Parties";
 import AdminCaseUpdate from "./pages/admin/CaseUpdateForm";
 import AdminDefendants from "./pages/admin/Defendants";
+import CasePackage from "./pages/admin/CasePackage";
 import Privacy from "./pages/Privacy";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,14 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) return <div className="flex items-center justify-center min-h-screen">로딩 중...</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (!isAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function LawyerRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLawyer, isLoading } = useAuth();
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen">로딩 중...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isLawyer) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -75,6 +84,7 @@ export default function App() {
               <Route path="/admin/cases/:id/parties" element={<AdminRoute><AdminParties /></AdminRoute>} />
               <Route path="/admin/cases/:id/update" element={<AdminRoute><AdminCaseUpdate /></AdminRoute>} />
               <Route path="/admin/cases/:id/defendants" element={<AdminRoute><AdminDefendants /></AdminRoute>} />
+              <Route path="/admin/cases/:id/package" element={<LawyerRoute><CasePackage /></LawyerRoute>} />
             </Routes>
           </main>
           <Footer />

@@ -7,9 +7,10 @@ import {
   billingKeys, defendants, defendantDocuments, consents, auditLogs,
 } from "../shared/schema";
 import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
-import { requireAuth, requireAdmin, hashPassword, loginWithSessionRegeneration } from "./auth";
+import { requireAuth, requireAdmin, requireLawyer, hashPassword, loginWithSessionRegeneration } from "./auth";
 import { encryptPII, decryptPII } from "./crypto";
 import { upload, deleteFile } from "./storage";
+import { assembleDossier, buildPackageZip } from "./casePackage";
 import {
   createPaymentSession, validatePaymentCallback,
   requestPaymentApproval, completePayment, generatePaymentFormHTML,
@@ -1242,6 +1243,45 @@ export function registerRoutes(app: Express) {
       });
     } catch (err) {
       return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // ═══════════════════════════════════════════
+  // 변호사 전용 — 사건 서면 패키지 (자료 자동정리 → 스킬로 서면 작성)
+  // ═══════════════════════════════════════════
+  // 화면용 dossier (주민번호 마스킹)
+  app.get("/api/lawyer/cases/:id/package", requireLawyer, async (req, res) => {
+    try {
+      const caseId = parseInt(req.params.id);
+      const dossier = await assembleDossier(caseId, { includeResident: false });
+      if (!dossier) return res.status(404).json({ error: "사건을 찾을 수 없습니다." });
+      await logAudit(req, "view_case_package", "cases", caseId, `당사자 ${dossier.당사자목록.length}명/증거 ${dossier.증거총건수}건`);
+      return res.json(dossier);
+    } catch (err) {
+      console.error("패키지 조회 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // ZIP 내보내기 (dossier.json 에 평문 주민번호 포함 — 변호사 게이트 + 감사로그)
+  app.get("/api/lawyer/cases/:id/package/export", requireLawyer, async (req, res) => {
+    try {
+      const caseId = parseInt(req.params.id);
+      const dossier = await assembleDossier(caseId, { includeResident: true });
+      if (!dossier) return res.status(404).json({ error: "사건을 찾을 수 없습니다." });
+      const rrnCount =
+        dossier.당사자목록.filter((p) => p.주민등록번호).length +
+        dossier.상대방목록.filter((x) => x.주민등록번호 || x.사업자등록번호).length;
+      await logAudit(req, "export_case_package", "cases", caseId, `당사자 ${dossier.당사자목록.length}명/증거 ${dossier.증거총건수}건/주민번호 ${rrnCount}건 복호화`);
+      const base = (dossier.사건.사건번호 || dossier.사건.사건명 || `case${caseId}`).replace(/[<>:"/\\|?*\s]/g, "_").slice(0, 60);
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const zipName = `사건_${caseId}_${base}_dossier_${today}.zip`;
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(zipName)}`);
+      buildPackageZip(dossier, res);
+    } catch (err) {
+      console.error("패키지 내보내기 오류:", err);
+      if (!res.headersSent) return res.status(500).json({ error: "서버 오류" });
     }
   });
 

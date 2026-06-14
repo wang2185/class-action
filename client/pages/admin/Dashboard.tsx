@@ -1,12 +1,14 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/queryClient";
+import { useAuth } from "../../hooks/use-auth";
 
 const STATUS_LABELS: Record<string, string> = {
   recruiting: "모집중", filed: "소 제기", in_progress: "진행중", settled: "합의", closed: "종결",
 };
 
 export default function AdminDashboard() {
+  const { isLawyer } = useAuth();
   const { data: stats } = useQuery({ queryKey: ["adminStats"], queryFn: () => apiRequest("/api/admin/stats") });
   const { data: cases } = useQuery({ queryKey: ["cases"], queryFn: () => apiRequest("/api/cases") });
 
@@ -64,6 +66,7 @@ export default function AdminDashboard() {
                         <Link to={`/admin/cases/${c.id}/parties`} className="text-blue-500 hover:underline">당사자</Link>
                         <Link to={`/admin/cases/${c.id}/defendants`} className="text-orange-500 hover:underline">상대방</Link>
                         <Link to={`/admin/cases/${c.id}/update`} className="text-green-500 hover:underline">경과</Link>
+                        {isLawyer && <Link to={`/admin/cases/${c.id}/package`} className="text-purple-500 hover:underline">서면자료</Link>}
                       </div>
                     </td>
                   </tr>
