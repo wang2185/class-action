@@ -98,7 +98,7 @@ export default function JoinCase() {
         </div>
 
         <button type="submit" disabled={joinMutation.isPending} className="btn-primary w-full">
-          {joinMutation.isPending ? "제출 중..." : "참여 신청"}
+          {joinMutation.isPending ? "제출 중…" : "참여 신청"}
         </button>
       </form>
     </div>

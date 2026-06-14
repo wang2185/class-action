@@ -17,7 +17,7 @@ export default function MyCases() {
       <h1 className="text-3xl font-bold mb-6">내 사건</h1>
 
       {isLoading ? (
-        <div className="text-center py-20 text-gray-400">불러오는 중...</div>
+        <div className="text-center py-20 text-gray-400">불러오는 중…</div>
       ) : !data || data.length === 0 ? (
         <div className="card text-center py-12">
           <p className="text-gray-400 mb-4">참여한 사건이 없습니다.</p>

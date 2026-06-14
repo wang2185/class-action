@@ -102,7 +102,7 @@ export default function AdminCaseUpdate() {
             <span className="text-sm">참가자에게 알림 발송 (문자·이메일)</span>
           </label>
           <button onClick={() => mutation.mutate(form)} disabled={mutation.isPending} className="btn-primary w-full">
-            {mutation.isPending ? "등록 중..." : "경과 등록"}
+            {mutation.isPending ? "등록 중…" : "경과 등록"}
           </button>
         </div>
 

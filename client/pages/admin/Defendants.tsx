@@ -183,7 +183,7 @@ export default function AdminDefendants() {
       {/* 상대방 목록 */}
       <div className="card">
         {isLoading ? (
-          <p className="text-center py-8 text-gray-400">불러오는 중...</p>
+          <p className="text-center py-8 text-gray-400">불러오는 중…</p>
         ) : defs.length === 0 ? (
           <p className="text-center py-8 text-gray-400">등록된 상대방이 없습니다.</p>
         ) : (
@@ -298,7 +298,7 @@ export default function AdminDefendants() {
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending} className="btn-primary flex-1">
-                  {saveMutation.isPending ? "저장 중..." : editId ? "수정" : "추가"}
+                  {saveMutation.isPending ? "저장 중…" : editId ? "수정" : "추가"}
                 </button>
                 <button onClick={() => { setShowForm(false); setEditId(null); setForm(emptyForm); }} className="btn-secondary">취소</button>
               </div>
@@ -327,7 +327,7 @@ export default function AdminDefendants() {
             />
             <div className="flex gap-3 pt-4">
               <button onClick={handleBulkParse} disabled={bulkMutation.isPending || !bulkText.trim()} className="btn-primary flex-1">
-                {bulkMutation.isPending ? "등록 중..." : "일괄 등록"}
+                {bulkMutation.isPending ? "등록 중…" : "일괄 등록"}
               </button>
               <button onClick={() => { setShowBulk(false); setBulkText(""); }} className="btn-secondary">취소</button>
             </div>
@@ -362,7 +362,7 @@ export default function AdminDefendants() {
               disabled={genMutation.isPending}
               className="btn-primary w-full mb-4"
             >
-              {genMutation.isPending ? "생성 중..." : "서류 생성"}
+              {genMutation.isPending ? "생성 중…" : "서류 생성"}
             </button>
 
             {genResult && (

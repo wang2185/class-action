@@ -43,7 +43,7 @@ export default function CaseList() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-20 text-gray-400">불러오는 중...</div>
+        <div className="text-center py-20 text-gray-400">불러오는 중…</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-gray-400">해당 조건의 사건이 없습니다.</div>
       ) : (

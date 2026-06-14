@@ -46,7 +46,7 @@ export default function CasePackage() {
     }
   };
 
-  if (isLoading) return <div className="max-w-5xl mx-auto px-4 py-8 text-gray-400">불러오는 중...</div>;
+  if (isLoading) return <div className="max-w-5xl mx-auto px-4 py-8 text-gray-400">불러오는 중…</div>;
   if (error || !data) return <div className="max-w-5xl mx-auto px-4 py-8 text-gray-500">패키지를 불러올 수 없습니다. (권한 또는 사건을 확인하세요)</div>;
 
   const d = data;
@@ -74,7 +74,7 @@ export default function CasePackage() {
             <p className="text-xs text-red-500 mt-1">⚠ dossier.json 에 평문 주민등록번호가 포함됩니다. 외부 전송 금지·취급 유의.</p>
           </div>
           <button onClick={handleExport} disabled={downloading} className="btn-primary whitespace-nowrap">
-            {downloading ? "생성 중..." : "패키지 내보내기"}
+            {downloading ? "생성 중…" : "패키지 내보내기"}
           </button>
         </div>
         {msg && <p className="text-xs mt-2 text-gray-600">{msg}</p>}

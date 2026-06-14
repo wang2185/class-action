@@ -46,7 +46,7 @@ export default function Landing() {
             <div className="flex flex-wrap gap-x-7 gap-y-2 mt-9 text-sm text-ink-muted animate-fade-up" style={{ animationDelay: "330ms" }}>
               {["전자서명 간편 위임", "실시간 진행 알림", "안전한 온라인 결제"].map((t) => (
                 <span key={t} className="inline-flex items-center gap-2">
-                  <svg className="w-4 h-4 text-primary-500" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10.5l4 4 8-9" /></svg>
+                  <svg aria-hidden="true" className="w-4 h-4 text-primary-500" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10.5l4 4 8-9" /></svg>
                   {t}
                 </span>
               ))}

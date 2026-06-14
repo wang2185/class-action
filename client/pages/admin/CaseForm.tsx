@@ -137,7 +137,7 @@ export default function AdminCaseForm() {
 
         <div className="flex gap-3 pt-2">
           <button onClick={() => mutation.mutate(form)} disabled={mutation.isPending} className="btn-primary flex-1">
-            {mutation.isPending ? "저장 중..." : isEdit ? "수정" : "등록"}
+            {mutation.isPending ? "저장 중…" : isEdit ? "수정" : "등록"}
           </button>
           <button onClick={() => navigate("/admin")} className="btn-secondary">취소</button>
         </div>

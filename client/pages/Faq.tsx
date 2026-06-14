@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useId } from "react";
 import { Link } from "react-router-dom";
 
 const FAQS = [
@@ -42,13 +42,15 @@ const FAQS = [
 
 function Item({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
+  const panelId = useId();
   return (
     <div className="card !p-0 overflow-hidden">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-4 text-left p-5 hover:bg-primary-50/50 transition-colors">
+      <button onClick={() => setOpen(!open)} aria-expanded={open} aria-controls={panelId}
+        className="w-full flex items-center justify-between gap-4 text-left p-5 hover:bg-primary-50/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500">
         <span className="font-semibold text-ink">{q}</span>
-        <svg className={`w-5 h-5 text-primary-500 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 7.5l5 5 5-5" /></svg>
+        <svg aria-hidden="true" className={`w-5 h-5 text-primary-500 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 7.5l5 5 5-5" /></svg>
       </button>
-      {open && <p className="px-5 pb-5 text-sm text-ink-muted leading-relaxed">{a}</p>}
+      {open && <p id={panelId} className="px-5 pb-5 text-sm text-ink-muted leading-relaxed">{a}</p>}
     </div>
   );
 }

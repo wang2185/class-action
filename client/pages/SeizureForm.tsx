@@ -83,7 +83,7 @@ export default function SeizureForm() {
         </div>
 
         <button onClick={() => mutation.mutate(form)} disabled={mutation.isPending} className="btn-primary w-full">
-          {mutation.isPending ? "제출 중..." : "가압류 신청"}
+          {mutation.isPending ? "제출 중…" : "가압류 신청"}
         </button>
       </div>
     </div>

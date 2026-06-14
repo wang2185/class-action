@@ -36,7 +36,10 @@ export default function Lawyer() {
             {/* 허왕 변호사 프로필 사진 */}
             <img
               src="/lawyer-heowang.jpg"
-              alt="허왕 변호사"
+              alt="허왕 변호사 프로필 사진"
+              width={208}
+              height={256}
+              decoding="async"
               className="w-40 h-48 md:w-52 md:h-64 rounded-3xl object-cover object-top shrink-0 shadow-lift ring-1 ring-black/10 bg-white"
             />
             <div className="text-center md:text-left">
@@ -62,7 +65,7 @@ export default function Lawyer() {
             <ul className="space-y-2.5">
               {CAREER.map((c) => (
                 <li key={c} className="flex items-start gap-2.5 text-sm text-ink-soft">
-                  <svg className="w-4 h-4 text-primary-500 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10.5l4 4 8-9" /></svg>
+                  <svg aria-hidden="true" className="w-4 h-4 text-primary-500 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10.5l4 4 8-9" /></svg>
                   {c}
                 </li>
               ))}
@@ -74,7 +77,7 @@ export default function Lawyer() {
               <ul className="space-y-2.5">
                 {CERT.map((c) => (
                   <li key={c} className="flex items-start gap-2.5 text-sm text-ink-soft">
-                    <svg className="w-4 h-4 text-primary-500 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10.5l4 4 8-9" /></svg>
+                    <svg aria-hidden="true" className="w-4 h-4 text-primary-500 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10.5l4 4 8-9" /></svg>
                     {c}
                   </li>
                 ))}
@@ -85,7 +88,7 @@ export default function Lawyer() {
               <ul className="space-y-2.5">
                 {EDU.map((c) => (
                   <li key={c} className="flex items-start gap-2.5 text-sm text-ink-soft">
-                    <svg className="w-4 h-4 text-primary-500 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10.5l4 4 8-9" /></svg>
+                    <svg aria-hidden="true" className="w-4 h-4 text-primary-500 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10.5l4 4 8-9" /></svg>
                     {c}
                   </li>
                 ))}

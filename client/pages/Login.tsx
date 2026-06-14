@@ -44,7 +44,7 @@ export default function Login() {
             <input type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="8자 이상" />
           </div>
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "로그인 중..." : "로그인"}
+            {loading ? "로그인 중…" : "로그인"}
           </button>
         </form>
         <p className="text-center text-sm text-gray-500 mt-4">

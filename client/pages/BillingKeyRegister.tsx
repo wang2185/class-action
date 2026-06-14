@@ -105,7 +105,7 @@ export default function BillingKeyRegister() {
             </label>
           </div>
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "등록 중..." : "카드 등록"}
+            {loading ? "등록 중…" : "카드 등록"}
           </button>
         </form>
       </div>

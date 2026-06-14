@@ -84,7 +84,7 @@ export default function CaseProgress() {
           <div className="card">
             <h2 className="font-bold text-lg mb-4">진행 경과</h2>
             {isLoading ? (
-              <p className="text-gray-400 py-8 text-center">불러오는 중...</p>
+              <p className="text-gray-400 py-8 text-center">불러오는 중…</p>
             ) : !updates || updates.length === 0 ? (
               <p className="text-gray-400 py-8 text-center">아직 등록된 경과가 없습니다.</p>
             ) : (
@@ -149,7 +149,7 @@ export default function CaseProgress() {
               </select>
             </div>
             <label className="btn-secondary w-full text-center block cursor-pointer text-sm">
-              {uploading ? "업로드 중..." : "증거 파일 추가"}
+              {uploading ? "업로드 중…" : "증거 파일 추가"}
               <input type="file" multiple className="hidden" onChange={handleFileUpload} disabled={uploading}
                 accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.zip,.mp4,.mov,.mp3,.wav,.txt" />
             </label>

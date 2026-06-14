@@ -32,7 +32,7 @@ export default function CaseDetail() {
     queryFn: () => apiRequest(`/api/cases/${id}/defendant-count`),
   });
 
-  if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]">불러오는 중...</div>;
+  if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]">불러오는 중…</div>;
   if (!caseData) return <div className="flex items-center justify-center min-h-[60vh]">사건을 찾을 수 없습니다.</div>;
 
   const c = caseData;

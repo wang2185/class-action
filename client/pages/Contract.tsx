@@ -124,7 +124,7 @@ export default function Contract() {
           disabled={!agreed || contractMutation.isPending}
           className="btn-primary w-full"
         >
-          {contractMutation.isPending ? "처리 중..." : "수임계약 체결"}
+          {contractMutation.isPending ? "처리 중…" : "수임계약 체결"}
         </button>
       </div>
     </div>

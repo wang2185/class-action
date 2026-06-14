@@ -31,7 +31,10 @@ function RequestCard({ r }: { r: any }) {
 
   return (
     <div className="card">
-      <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={() => setOpen(!open)}>
+      <div role="button" tabIndex={0} aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(!open); } }}
+        className="flex items-start justify-between gap-3 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className={`badge ${st.cls}`}>{st.label}</span>
@@ -42,7 +45,7 @@ function RequestCard({ r }: { r: any }) {
             {r.name} · {r.phone}{r.email ? ` · ${r.email}` : ""} · {fmtDate(r.createdAt)}
           </p>
         </div>
-        <svg className={`w-5 h-5 text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 7.5l5 5 5-5" /></svg>
+        <svg aria-hidden="true" className={`w-5 h-5 text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 7.5l5 5 5-5" /></svg>
       </div>
 
       {open && (
@@ -68,7 +71,7 @@ function RequestCard({ r }: { r: any }) {
               </button>
             ))}
             <button onClick={() => mut.mutate({ adminNote: note })} disabled={mut.isPending} className="btn-secondary text-xs px-3 py-1.5 ml-auto">
-              {mut.isPending ? "저장 중..." : "메모 저장"}
+              {mut.isPending ? "저장 중…" : "메모 저장"}
             </button>
           </div>
         </div>
@@ -102,7 +105,7 @@ export default function CaseRequests() {
       </div>
 
       {isLoading ? (
-        <p className="text-gray-400 py-12 text-center">불러오는 중...</p>
+        <p className="text-gray-400 py-12 text-center">불러오는 중…</p>
       ) : !requests || requests.length === 0 ? (
         <div className="card text-center py-12 text-gray-400">접수된 사건 요청이 없습니다.</div>
       ) : (

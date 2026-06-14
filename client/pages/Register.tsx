@@ -75,7 +75,7 @@ export default function Register() {
             </label>
           </div>
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "가입 중..." : "회원가입"}
+            {loading ? "가입 중…" : "회원가입"}
           </button>
         </form>
         <p className="text-center text-sm text-gray-500 mt-4">

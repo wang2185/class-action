@@ -32,14 +32,14 @@ import Faq from "./pages/Faq";
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
-  if (isLoading) return <div className="flex items-center justify-center min-h-screen">로딩 중...</div>;
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen">로딩 중…</div>;
   if (!user) return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   return <>{children}</>;
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, isLoading } = useAuth();
-  if (isLoading) return <div className="flex items-center justify-center min-h-screen">로딩 중...</div>;
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen">로딩 중…</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (!isAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
@@ -47,7 +47,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 function LawyerRoute({ children }: { children: React.ReactNode }) {
   const { user, isLawyer, isLoading } = useAuth();
-  if (isLoading) return <div className="flex items-center justify-center min-h-screen">로딩 중...</div>;
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen">로딩 중…</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (!isLawyer) return <Navigate to="/" replace />;
   return <>{children}</>;

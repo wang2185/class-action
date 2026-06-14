@@ -84,7 +84,7 @@ export default function Payment() {
             disabled={initPayment.isPending}
             className="btn-primary w-full text-lg py-3"
           >
-            {initPayment.isPending ? "결제 준비 중..." : `${(caseData?.retainerFee || 0).toLocaleString()}원 결제하기`}
+            {initPayment.isPending ? "결제 준비 중…" : `${(caseData?.retainerFee || 0).toLocaleString()}원 결제하기`}
           </button>
         )}
       </div>

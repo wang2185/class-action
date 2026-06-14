@@ -44,7 +44,7 @@ export default function AdminParties() {
       {linkMsg && <div className="bg-blue-50 text-blue-700 text-sm p-3 rounded-lg mb-4 break-all">{linkMsg}</div>}
 
       {isLoading ? (
-        <p className="text-center py-8 text-gray-400">불러오는 중...</p>
+        <p className="text-center py-8 text-gray-400">불러오는 중…</p>
       ) : !parties || parties.length === 0 ? (
         <div className="card text-center py-12">
           <p className="text-gray-400">참여한 당사자가 없습니다.</p>

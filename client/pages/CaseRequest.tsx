@@ -41,7 +41,7 @@ export default function CaseRequest() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center animate-fade-up">
         <div className="w-16 h-16 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+          <svg aria-hidden="true" className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
         </div>
         <h1 className="text-2xl font-bold mb-3">사건 요청이 접수되었습니다</h1>
         <p className="text-ink-muted leading-relaxed mb-8">
@@ -69,32 +69,32 @@ export default function CaseRequest() {
         </p>
       </div>
 
-      {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
+      {error && <div role="alert" className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
 
       <div className="card space-y-4">
         {/* 허니팟 — 사람에게 숨김, 봇이 채우면 서버가 무시 */}
-        <input type="text" name="website" value={website} onChange={(e) => setWebsite(e.target.value)}
-          tabIndex={-1} autoComplete="off" aria-hidden="true"
+        <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true"
+          value={website} onChange={(e) => setWebsite(e.target.value)}
           style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }} />
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="label">이름 *</label>
-            <input className="input" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="홍길동" />
+            <label htmlFor="cr-name" className="label">이름 *</label>
+            <input id="cr-name" name="name" autoComplete="name" className="input" value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="홍길동" />
           </div>
           <div>
-            <label className="label">연락처 *</label>
-            <input className="input" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="010-0000-0000" inputMode="numeric" />
+            <label htmlFor="cr-phone" className="label">연락처 *</label>
+            <input id="cr-phone" name="phone" type="tel" inputMode="numeric" autoComplete="tel" spellCheck={false} className="input" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="010-0000-0000" />
           </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="label">이메일</label>
-            <input className="input" value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="example@email.com" />
+            <label htmlFor="cr-email" className="label">이메일</label>
+            <input id="cr-email" name="email" type="email" inputMode="email" autoComplete="email" spellCheck={false} className="input" value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="example@email.com" />
           </div>
           <div>
-            <label className="label">피해 유형</label>
-            <select className="input" value={form.category} onChange={(e) => update("category", e.target.value)}>
+            <label htmlFor="cr-category" className="label">피해 유형</label>
+            <select id="cr-category" name="category" className="input" value={form.category} onChange={(e) => update("category", e.target.value)}>
               <option value="">선택 안 함</option>
               {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -102,30 +102,30 @@ export default function CaseRequest() {
         </div>
 
         <div>
-          <label className="label">한 줄 요약 *</label>
-          <input className="input" value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="예: ○○분양 계약금 반환 거부 피해" />
+          <label htmlFor="cr-title" className="label">한 줄 요약 *</label>
+          <input id="cr-title" name="title" className="input" value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="예: ○○분양 계약금 반환 거부 피해…" />
         </div>
 
         <div>
-          <label className="label">상대방 (가해자·회사)</label>
-          <input className="input" value={form.opponent} onChange={(e) => update("opponent", e.target.value)} placeholder="예: 주식회사 ○○ / 개인" />
+          <label htmlFor="cr-opponent" className="label">상대방 (가해자·회사)</label>
+          <input id="cr-opponent" name="opponent" className="input" value={form.opponent} onChange={(e) => update("opponent", e.target.value)} placeholder="예: 주식회사 ○○ / 개인…" />
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="label">예상 피해자 규모</label>
-            <input className="input" value={form.headcount} onChange={(e) => update("headcount", e.target.value)} placeholder="예: 약 50명" />
+            <label htmlFor="cr-headcount" className="label">예상 피해자 규모</label>
+            <input id="cr-headcount" name="headcount" className="input" value={form.headcount} onChange={(e) => update("headcount", e.target.value)} placeholder="예: 약 50명…" />
           </div>
           <div>
-            <label className="label">예상 피해 금액</label>
-            <input className="input" value={form.damageScale} onChange={(e) => update("damageScale", e.target.value)} placeholder="예: 1인당 약 500만원" />
+            <label htmlFor="cr-damage" className="label">예상 피해 금액</label>
+            <input id="cr-damage" name="damageScale" className="input" value={form.damageScale} onChange={(e) => update("damageScale", e.target.value)} placeholder="예: 1인당 약 500만원…" />
           </div>
         </div>
 
         <div>
-          <label className="label">피해 내용 *</label>
-          <textarea className="input min-h-[160px]" value={form.content} onChange={(e) => update("content", e.target.value)}
-            placeholder="언제, 누구에게, 어떤 피해를 입으셨는지 사실관계를 시간 순으로 적어주세요. 계약·입금·연락 기록이 있으면 함께 알려주세요." />
+          <label htmlFor="cr-content" className="label">피해 내용 *</label>
+          <textarea id="cr-content" name="content" className="input min-h-[160px]" value={form.content} onChange={(e) => update("content", e.target.value)}
+            placeholder="언제, 누구에게, 어떤 피해를 입으셨는지 사실관계를 시간 순으로 적어주세요. 계약·입금·연락 기록이 있으면 함께 알려주세요…" />
         </div>
 
         <label className="flex items-start gap-2.5 text-sm text-ink-soft cursor-pointer">
@@ -137,7 +137,7 @@ export default function CaseRequest() {
         </label>
 
         <button onClick={submit} disabled={mutation.isPending} className="btn-accent w-full py-3.5 text-base">
-          {mutation.isPending ? "접수 중..." : "사건 요청 보내기"}
+          {mutation.isPending ? "접수 중…" : "사건 요청 보내기"}
         </button>
         <p className="text-xs text-ink-muted text-center leading-relaxed">
           ※ 접수는 법률 자문·수임 계약의 성립을 의미하지 않습니다. 사건의 성패는 보장되지 않습니다.
