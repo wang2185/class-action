@@ -6,14 +6,14 @@ import { db } from "./db";
 import {
   users, cases, caseParties, evidence, caseUpdates,
   paymentOrders, provisionalSeizures, paymentSessions, paymentTransactions,
-  billingKeys, defendants, defendantDocuments, consents, auditLogs, paymentLinks,
+  billingKeys, defendants, defendantDocuments, consents, auditLogs, paymentLinks, notifications,
 } from "../shared/schema";
 import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireLawyer, hashPassword, loginWithSessionRegeneration } from "./auth";
 import { encryptPII, decryptPII } from "./crypto";
 import { upload, deleteFile } from "./storage";
 import { assembleDossier, buildPackageZip } from "./casePackage";
-import { sendSMS } from "./notify";
+import { sendSMS, notifyParty, mapWithConcurrency } from "./notify";
 import {
   createPaymentSession, validatePaymentCallback,
   requestPaymentApproval, completePayment, generatePaymentFormHTML, cancelPayment,
@@ -39,6 +39,46 @@ function payLinkPage(message: string): string {
 <div style="font-size:18px;font-weight:700;margin-bottom:12px;">법무법인 윈스 · 허왕 변호사</div>
 <p style="font-size:15px;color:#4b5563;line-height:1.6;">${message}</p>
 </div></body></html>`;
+}
+
+// 수신처 마스킹(발송현황 노출용)
+function maskRecipient(r: string): string {
+  if (!r) return "";
+  if (r.includes("@")) {
+    const [u, d] = r.split("@");
+    return `${u.slice(0, 2)}***@${d}`;
+  }
+  const digits = r.replace(/[^0-9]/g, "");
+  return digits.length >= 4 ? `***${digits.slice(-4)}` : "***";
+}
+
+// 사건 경과를 당사자 전원에게 발송(소송개시 자동알림). notify.ts 팬아웃, 동시성 캡.
+async function notifyCaseParties(caseId: number, update: { id: number; title: string; content: string; updateType: string }, nonce?: number) {
+  const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+  const parties = await db.select().from(caseParties).where(eq(caseParties.caseId, caseId));
+  if (!parties.length) return;
+  const caseTitle = caseData?.title || "사건";
+  const progressUrl = `${PUBLIC_BASE}/cases/${caseId}/progress`;
+  const tplKey = `case_${update.updateType}${nonce ? `_r${nonce}` : ""}`.slice(0, 60);
+  const smsText = `[법무법인 윈스] 허왕 변호사\n${caseTitle}\n${update.title}\n진행상황: ${progressUrl}`;
+  const emailSubject = `[법무법인 윈스] ${update.title}`;
+  const emailHtml = `<div style="font-family:sans-serif;line-height:1.7;color:#1f2937;">
+<p style="font-weight:700;">법무법인 윈스 · 허왕 변호사</p>
+<p>${caseTitle} 사건 안내입니다.</p>
+<p style="font-weight:600;margin-top:12px;">${update.title}</p>
+<p style="white-space:pre-wrap;color:#4b5563;">${update.content || ""}</p>
+<p style="margin-top:16px;"><a href="${progressUrl}">진행상황 확인하기</a></p>
+</div>`;
+  await mapWithConcurrency(parties, 5, async (p) => {
+    await notifyParty(
+      { id: p.id, phone: p.phone, email: p.email, name: p.name },
+      {
+        templateKey: tplKey, smsText, emailSubject, emailHtml,
+        alimtalkCode: process.env.ALIGO_KAKAO_TPL_FILING, alimtalkMessage: smsText,
+      },
+      { caseId, caseUpdateId: update.id },
+    );
+  });
 }
 
 // 감사 로그 기록 헬퍼
@@ -1099,8 +1139,9 @@ export function registerRoutes(app: Express) {
   // 사건 경과 업데이트 추가
   app.post("/api/admin/cases/:id/updates", requireAdmin, upload.single("attachment"), async (req: any, res) => {
     try {
+      const caseId = parseInt(req.params.id);
       const [update] = await db.insert(caseUpdates).values({
-        caseId: parseInt(req.params.id),
+        caseId,
         title: req.body.title,
         content: req.body.content,
         updateType: req.body.updateType || "notice",
@@ -1108,7 +1149,45 @@ export function registerRoutes(app: Express) {
         attachmentPath: req.file?.path || null,
         attachmentName: req.file?.originalname || null,
       }).returning();
-      return res.status(201).json(update);
+
+      // 자동 알림: 체크박스(notifyParties) 시 당사자 전원에게 발송. 비동기(대량 대비) → 즉시 응답.
+      let notified = false;
+      if (req.body.notifyParties === "true") {
+        notified = true;
+        await logAudit(req, "notify_parties", "case_updates", update.id);
+        notifyCaseParties(caseId, update).catch((e) => console.error("알림 팬아웃 오류:", e));
+      }
+      return res.status(201).json({ ...update, notified });
+    } catch (err) {
+      console.error("경과 등록 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 알림 재발송(수동) — nonce 로 멱등 우회
+  app.post("/api/admin/case-updates/:id/resend", requireAdmin, async (req, res) => {
+    try {
+      const updateId = parseInt(req.params.id);
+      const [update] = await db.select().from(caseUpdates).where(eq(caseUpdates.id, updateId)).limit(1);
+      if (!update) return res.status(404).json({ error: "경과를 찾을 수 없습니다." });
+      await logAudit(req, "notify_parties_resend", "case_updates", updateId);
+      notifyCaseParties(update.caseId, update, Date.now()).catch((e) => console.error("재발송 오류:", e));
+      return res.json({ ok: true });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 발송 현황(마스킹)
+  app.get("/api/admin/case-updates/:id/notifications", requireAdmin, async (req, res) => {
+    try {
+      const rows = await db.select().from(notifications)
+        .where(eq(notifications.caseUpdateId, parseInt(req.params.id)))
+        .orderBy(desc(notifications.createdAt));
+      return res.json(rows.map((r) => ({
+        id: r.id, channel: r.channel, recipient: maskRecipient(r.recipient),
+        status: r.status, error: r.error, createdAt: r.createdAt,
+      })));
     } catch (err) {
       return res.status(500).json({ error: "서버 오류" });
     }

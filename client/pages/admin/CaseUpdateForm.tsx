@@ -11,6 +11,8 @@ export default function AdminCaseUpdate() {
   });
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
+  const [notify, setNotify] = useState(false);
+  const [resultMsg, setResultMsg] = useState("");
 
   const { data: caseData } = useQuery({ queryKey: ["case", id], queryFn: () => apiRequest(`/api/cases/${id}`) });
   const { data: updates } = useQuery({
@@ -25,6 +27,7 @@ export default function AdminCaseUpdate() {
       formData.append("content", data.content);
       formData.append("updateType", data.updateType);
       formData.append("isPublic", data.isPublic.toString());
+      formData.append("notifyParties", String(notify));
       if (file) formData.append("attachment", file);
 
       const res = await fetch(`/api/admin/cases/${id}/updates`, {
@@ -35,12 +38,20 @@ export default function AdminCaseUpdate() {
       if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["caseUpdates", id] });
       setForm({ title: "", content: "", updateType: "notice", isPublic: true });
+      setNotify(false);
       setFile(null);
+      setResultMsg(data?.notified ? "경과 등록 + 당사자에게 알림을 발송했습니다." : "경과를 등록했습니다.");
     },
     onError: (err: any) => setError(err.message),
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: (updateId: number) => apiRequest(`/api/admin/case-updates/${updateId}/resend`, { method: "POST" }),
+    onSuccess: () => setResultMsg("알림을 재발송했습니다."),
+    onError: (e: any) => setResultMsg(e.message || "재발송 실패"),
   });
 
   const update = (field: string, value: any) => setForm((prev) => ({ ...prev, [field]: value }));
@@ -49,6 +60,7 @@ export default function AdminCaseUpdate() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-2">사건 경과 등록</h1>
       {caseData && <p className="text-gray-500 mb-6">{caseData.title}</p>}
+      {resultMsg && <div className="bg-blue-50 text-blue-700 text-sm p-3 rounded-lg mb-4">{resultMsg}</div>}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* 등록 폼 */}
@@ -58,7 +70,7 @@ export default function AdminCaseUpdate() {
 
           <div>
             <label className="label">유형</label>
-            <select className="input" value={form.updateType} onChange={(e) => update("updateType", e.target.value)}>
+            <select className="input" value={form.updateType} onChange={(e) => { update("updateType", e.target.value); setNotify(e.target.value !== "notice"); }}>
               <option value="notice">공지</option>
               <option value="filing">소제기</option>
               <option value="hearing">기일</option>
@@ -84,6 +96,11 @@ export default function AdminCaseUpdate() {
               className="w-4 h-4 text-primary-500 rounded" />
             <span className="text-sm">당사자에게 공개</span>
           </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)}
+              className="w-4 h-4 text-accent-500 rounded" />
+            <span className="text-sm">참가자에게 알림 발송 (문자·이메일)</span>
+          </label>
           <button onClick={() => mutation.mutate(form)} disabled={mutation.isPending} className="btn-primary w-full">
             {mutation.isPending ? "등록 중..." : "경과 등록"}
           </button>
@@ -105,6 +122,8 @@ export default function AdminCaseUpdate() {
                   </div>
                   <p className="font-medium">{u.title}</p>
                   <p className="text-gray-500 text-xs mt-1 line-clamp-2">{u.content}</p>
+                  <button onClick={() => resendMutation.mutate(u.id)} disabled={resendMutation.isPending}
+                    className="text-xs text-accent-500 hover:underline mt-2 disabled:opacity-50">알림 재발송</button>
                 </div>
               ))}
             </div>
