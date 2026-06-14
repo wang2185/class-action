@@ -39,7 +39,7 @@ export default function Footer() {
 
       {/* Footer 정보 */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 gap-8">
           <div>
             <h3 className="text-white font-bold mb-1">로사이어티 <span className="text-gray-400 font-normal">집단소송</span></h3>
             <p className="text-sm text-gray-500 mb-3">법무법인 윈스 · 허왕 변호사</p>
@@ -56,14 +56,6 @@ export default function Footer() {
               <Link to="/tools" className="block hover:text-white transition-colors">법률 도구</Link>
               <a href="https://day.lawyer" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">법률 상담 구독</a>
               <a href="https://willsave.co.kr" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">유언장 서비스</a>
-            </div>
-          </div>
-          <div>
-            <h3 className="text-white font-bold mb-3">법률 도구</h3>
-            <div className="space-y-2 text-sm">
-              <a href="https://docurepeat.com" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">문서 자동화 (DocuRepeat)</a>
-              <a href="https://gongsi.estate" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">시가조회 (Siga-Lookup)</a>
-              <a href="https://day.lawyer/casecrab" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">판례검색 (CaseScraper)</a>
             </div>
           </div>
         </div>
