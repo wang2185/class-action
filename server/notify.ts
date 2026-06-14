@@ -12,8 +12,16 @@ const ALIGO_ALIMTALK_URL = "https://kakaoapi.aligo.in/akv10/alimtalk/send/";
 export function isSmsConfigured(): boolean {
   return !!(process.env.ALIGO_API_KEY && process.env.ALIGO_USER_ID && process.env.ALIGO_SENDER);
 }
-export function isEmailConfigured(): boolean {
+function isSmtpConfigured(): boolean {
   return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+// M365(Microsoft Graph) 앱 단독 메일발송 — winslaw.co.kr 테넌트 메일함에서 발송.
+// ⚠ Azure AD에서 앱에 Mail.Send(애플리케이션) 권한 + 관리자 동의가 있어야 동작(없으면 403).
+export function isM365Configured(): boolean {
+  return !!(process.env.M365_TENANT_ID && process.env.M365_CLIENT_ID && process.env.M365_CLIENT_SECRET && process.env.M365_MAIL_SENDER);
+}
+export function isEmailConfigured(): boolean {
+  return isSmtpConfigured() || isM365Configured();
 }
 export function isAlimtalkConfigured(): boolean {
   return !!(process.env.ALIGO_KAKAO_SENDER_KEY && process.env.ALIGO_API_KEY && process.env.ALIGO_USER_ID);
@@ -124,6 +132,52 @@ function getTransporter(): nodemailer.Transporter {
   return transporter;
 }
 
+// M365 토큰 캐시(client credentials). 만료 60초 전까지 재사용.
+let m365Token: { value: string; exp: number } | null = null;
+async function getM365Token(nowMs: number): Promise<string> {
+  if (m365Token && m365Token.exp > nowMs + 60_000) return m365Token.value;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  let j: any;
+  try {
+    const res = await fetch(`https://login.microsoftonline.com/${process.env.M365_TENANT_ID}/oauth2/v2.0/token`, {
+      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: process.env.M365_CLIENT_ID!, client_secret: process.env.M365_CLIENT_SECRET!,
+        scope: "https://graph.microsoft.com/.default", grant_type: "client_credentials",
+      }),
+      signal: controller.signal,
+    });
+    j = await res.json().catch(() => ({}));
+    if (!j.access_token) throw new Error(`M365 토큰 실패: ${j.error_description || j.error || res.status}`);
+  } finally {
+    clearTimeout(timer);
+  }
+  m365Token = { value: j.access_token, exp: nowMs + Number(j.expires_in || 3600) * 1000 };
+  return m365Token.value;
+}
+// Graph 앱 단독 발송. 성공 시 202(본문 없음).
+async function sendEmailM365(to: string, subject: string, html: string): Promise<string> {
+  const token = await getM365Token(Date.now());
+  const sender = encodeURIComponent(process.env.M365_MAIL_SENDER!);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(`https://graph.microsoft.com/v1.0/users/${sender}/sendMail`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ message: { subject, body: { contentType: "HTML", content: html }, toRecipients: [{ emailAddress: { address: to } }] }, saveToSentItems: true }),
+      signal: controller.signal,
+    });
+    if (res.status !== 202) {
+      const t = await res.text().catch(() => "");
+      throw new Error(`Graph ${res.status}: ${t.slice(0, 200)}`);
+    }
+    return `M365:${process.env.M365_MAIL_SENDER}`;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function sendEmail(to: string, subject: string, html: string, ctxIn: NotifyCtx): Promise<NotifyResult> {
   const ctx = channelKey(ctxIn, "email");
   if (!to) { await record("email", "", ctx, "skipped", undefined, "이메일 없음"); return { ok: false, status: "skipped" }; }
@@ -138,9 +192,15 @@ export async function sendEmail(to: string, subject: string, html: string, ctxIn
     return { ok: false, status: "skipped" };
   }
   try {
-    const info = await getTransporter().sendMail({ from: process.env.SMTP_FROM || "notice@day.lawyer", to, subject, html });
-    await record("email", to, ctx, "sent", info.messageId);
-    return { ok: true, status: "sent", providerMsgId: info.messageId };
+    let providerMsgId: string;
+    if (isM365Configured()) {
+      providerMsgId = await sendEmailM365(to, subject, html); // M365 우선
+    } else {
+      const info = await getTransporter().sendMail({ from: process.env.SMTP_FROM || "notice@day.lawyer", to, subject, html });
+      providerMsgId = info.messageId;
+    }
+    await record("email", to, ctx, "sent", providerMsgId);
+    return { ok: true, status: "sent", providerMsgId };
   } catch (e: any) {
     await record("email", to, ctx, "failed", undefined, e?.message || String(e));
     return { ok: false, status: "failed", error: e?.message };
