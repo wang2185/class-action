@@ -5,7 +5,7 @@ import { cases } from "../shared/schema";
 import { eq } from "drizzle-orm";
 
 // 공유 카드의 절대 URL 기준. 요청 Host 헤더를 신뢰하지 않고 고정값 사용(언퍼를 스푸핑 방지).
-const BASE = (process.env.PUBLIC_BASE_URL || process.env.CORS_ORIGIN || "https://class.day.lawyer").replace(/\/$/, "");
+const BASE = (process.env.PUBLIC_BASE_URL || process.env.CORS_ORIGIN || "https://class.lawciety.com").replace(/\/$/, "");
 
 const PG_INT_MAX = 2147483647;
 

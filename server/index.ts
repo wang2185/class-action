@@ -37,7 +37,7 @@ app.use(
 
 // CORS
 const allowedOrigins = isProd
-  ? [process.env.CORS_ORIGIN || "https://class.day.lawyer"]
+  ? [process.env.CORS_ORIGIN || "https://class.lawciety.com"]
   : ["http://localhost:5173", "http://localhost:5001"];
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));

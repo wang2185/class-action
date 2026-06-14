@@ -22,7 +22,7 @@ import {
 } from "./nicepay";
 
 // 공개 절대 URL (결제/진행 링크)
-const PUBLIC_BASE = (process.env.PUBLIC_BASE_URL || process.env.CORS_ORIGIN || "https://class.day.lawyer").replace(/\/$/, "");
+const PUBLIC_BASE = (process.env.PUBLIC_BASE_URL || process.env.CORS_ORIGIN || "https://class.lawciety.com").replace(/\/$/, "");
 
 // 결제링크 공개 라우트 전용 rate limiter (글로벌 200/15분과 별도, 더 엄격)
 const payLinkLimiter = rateLimit({
@@ -609,7 +609,7 @@ export function registerRoutes(app: Express) {
         buyerName: party.name,
         buyerTel: party.phone || "",
         buyerEmail: party.email || "",
-        returnUrl: `${process.env.CORS_ORIGIN || "https://class.day.lawyer"}/api/nicepay/callback`,
+        returnUrl: `${process.env.CORS_ORIGIN || "https://class.lawciety.com"}/api/nicepay/callback`,
       });
     } catch (err) {
       console.error("결제 초기화 오류:", err);
@@ -639,7 +639,7 @@ export function registerRoutes(app: Express) {
         buyerName: party?.name || "고객",
         buyerTel: party?.phone || "",
         buyerEmail: party?.email || "",
-        returnUrl: `${process.env.CORS_ORIGIN || "https://class.day.lawyer"}/api/nicepay/callback`,
+        returnUrl: `${process.env.CORS_ORIGIN || "https://class.lawciety.com"}/api/nicepay/callback`,
         merchantId: process.env.NICEPAY_MERCHANT_ID || "winslaw00m",
         ediDate: session.ediDate,
         signData: session.signData,
