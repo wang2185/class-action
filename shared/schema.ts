@@ -256,6 +256,23 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── 알림 발송 로그 (SMS/이메일/알림톡 — 감사·멱등) ───
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  channel: varchar("channel", { length: 20 }).notNull(), // sms | email | alimtalk
+  recipient: varchar("recipient", { length: 255 }).notNull(), // 전화(숫자) 또는 이메일
+  templateKey: varchar("template_key", { length: 60 }).notNull(), // case_filing | payment_link 등
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending|sent|failed|skipped
+  providerMsgId: varchar("provider_msg_id", { length: 100 }), // Aligo msg_id / SES messageId
+  error: text("error"),
+  caseId: integer("case_id"),
+  casePartyId: integer("case_party_id"),
+  caseUpdateId: integer("case_update_id"), // ⑥ 소송경과 트리거
+  paymentLinkId: integer("payment_link_id"), // ⑤ 결제링크 트리거
+  dedupeKey: varchar("dedupe_key", { length: 160 }), // 멱등 키(중복 발송 방지)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── 세션 (express-session) ───
 export const sessions = pgTable("session", {
   sid: varchar("sid").primaryKey(),
@@ -320,3 +337,4 @@ export type InsertDefendant = typeof defendants.$inferInsert;
 export type DefendantDocument = typeof defendantDocuments.$inferSelect;
 export type Consent = typeof consents.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
