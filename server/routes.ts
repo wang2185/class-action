@@ -1,22 +1,45 @@
 import { type Express, type Request, type Response } from "express";
 import passport from "passport";
+import crypto from "crypto";
+import rateLimit from "express-rate-limit";
 import { db } from "./db";
 import {
   users, cases, caseParties, evidence, caseUpdates,
   paymentOrders, provisionalSeizures, paymentSessions, paymentTransactions,
-  billingKeys, defendants, defendantDocuments, consents, auditLogs,
+  billingKeys, defendants, defendantDocuments, consents, auditLogs, paymentLinks,
 } from "../shared/schema";
 import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, requireLawyer, hashPassword, loginWithSessionRegeneration } from "./auth";
 import { encryptPII, decryptPII } from "./crypto";
 import { upload, deleteFile } from "./storage";
 import { assembleDossier, buildPackageZip } from "./casePackage";
+import { sendSMS } from "./notify";
 import {
   createPaymentSession, validatePaymentCallback,
-  requestPaymentApproval, completePayment, generatePaymentFormHTML,
+  requestPaymentApproval, completePayment, generatePaymentFormHTML, cancelPayment,
   isNicePayConfigured, isKeyinConfigured,
   registerBillingKey, approveBillingPayment, removeBillingKey,
 } from "./nicepay";
+
+// 공개 절대 URL (결제/진행 링크)
+const PUBLIC_BASE = (process.env.PUBLIC_BASE_URL || process.env.CORS_ORIGIN || "https://class.day.lawyer").replace(/\/$/, "");
+
+// 결제링크 공개 라우트 전용 rate limiter (글로벌 200/15분과 별도, 더 엄격)
+const payLinkLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+});
+
+// 결제링크 안내 페이지 HTML
+function payLinkPage(message: string): string {
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>결제 안내</title></head>
+<body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:90vh;margin:0;color:#1f2937;">
+<div style="text-align:center;max-width:420px;padding:24px;">
+<div style="font-size:18px;font-weight:700;margin-bottom:12px;">법무법인 윈스 · 허왕 변호사</div>
+<p style="font-size:15px;color:#4b5563;line-height:1.6;">${message}</p>
+</div></body></html>`;
+}
 
 // 감사 로그 기록 헬퍼
 async function logAudit(req: Request, action: string, tableName?: string, recordId?: number, details?: string) {
@@ -598,18 +621,216 @@ export function registerRoutes(app: Express) {
         return res.redirect(`/payment/fail?orderId=${Moid}&msg=${encodeURIComponent(req.body.ResultMsg || "결제 실패")}`);
       }
 
-      await validatePaymentCallback(Moid, Amt, MID, EdiDate, SignData);
+      const session = await validatePaymentCallback(Moid, Amt, MID, EdiDate, SignData);
+
+      // 결제링크 결제: 승인(청구) 전에 링크를 원자적으로 active→used 선점.
+      // 다중 오픈/동시 콜백이 와도 단 하나만 통과 → 이중청구·취소/만료 후 결제 차단.
+      let claimedLinkId: number | null = null;
+      if (session.metadata) {
+        try {
+          const meta = JSON.parse(session.metadata);
+          if (meta?.paymentLinkId) {
+            const claimed = await db.update(paymentLinks)
+              .set({ status: "used", usedAt: new Date() })
+              .where(and(eq(paymentLinks.id, meta.paymentLinkId), eq(paymentLinks.status, "active")))
+              .returning();
+            if (claimed.length === 0) {
+              return res.redirect(`/payment/fail?orderId=${Moid}&msg=${encodeURIComponent("이미 처리되었거나 만료된 결제입니다.")}`);
+            }
+            claimedLinkId = meta.paymentLinkId;
+          }
+        } catch {
+          /* metadata 파싱 실패 → 일반 결제로 진행 */
+        }
+      }
+
       const approvalResult = await requestPaymentApproval(TID, Moid, Amt);
 
       if (approvalResult.ResultCode === "3001" || approvalResult.ResultCode === "0000") {
         await completePayment(Moid, TID, approvalResult);
+        // 실제 완료된 orderId 를 링크에 확정(본인취소가 올바른 거래를 찾도록)
+        if (claimedLinkId) {
+          await db.update(paymentLinks).set({ lastSessionOrderId: Moid }).where(eq(paymentLinks.id, claimedLinkId));
+        }
         return res.redirect(`/payment/success?orderId=${Moid}`);
       } else {
+        // 승인 실패 → 선점한 링크를 active 로 롤백(재시도 허용)
+        if (claimedLinkId) {
+          await db.update(paymentLinks).set({ status: "active", usedAt: null }).where(eq(paymentLinks.id, claimedLinkId));
+        }
         return res.redirect(`/payment/fail?orderId=${Moid}&msg=${encodeURIComponent(approvalResult.ResultMsg || "승인 실패")}`);
       }
     } catch (err: any) {
       console.error("결제 콜백 오류:", err);
       return res.redirect(`/payment/fail?msg=${encodeURIComponent(err.message || "오류")}`);
+    }
+  });
+
+  // ═══════════════════════════════════════════
+  // 결제 링크 (토큰 단축링크 — 로그인 없이 클릭 결제)
+  // ═══════════════════════════════════════════
+  const PAYLINK_GOODS: Record<string, (t: string) => string> = {
+    retainer: (t) => `[착수금] ${t}`, payment_order: (t) => `[지급명령] ${t}`, seizure: (t) => `[가압류] ${t}`,
+  };
+
+  // 관리자: 당사자별 결제링크 생성(+SMS 발송)
+  app.post("/api/admin/cases/:id/payment-links", requireAdmin, async (req, res) => {
+    try {
+      const caseId = parseInt(req.params.id);
+      const { casePartyIds, paymentType = "retainer", amount, expiresInDays = 7, send = true } = req.body;
+      const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+      if (!caseData) return res.status(404).json({ error: "사건을 찾을 수 없습니다." });
+
+      let targets = await db.select().from(caseParties).where(eq(caseParties.caseId, caseId));
+      if (Array.isArray(casePartyIds) && casePartyIds.length) {
+        const ids = casePartyIds.map((x: any) => parseInt(x)).filter((n: number) => !isNaN(n));
+        targets = targets.filter((p) => ids.includes(p.id));
+      }
+      if (!targets.length) return res.status(400).json({ error: "대상 당사자가 없습니다." });
+
+      const linkAmount = amount ? parseInt(amount) : (paymentType === "retainer" ? caseData.retainerFee : 0);
+      if (!linkAmount || linkAmount <= 0) return res.status(400).json({ error: "결제 금액을 지정해주세요." });
+      const goodsName = (PAYLINK_GOODS[paymentType] || ((t: string) => `[결제] ${t}`))(caseData.title);
+      const expiresAt = new Date(Date.now() + Math.max(1, Math.min(60, parseInt(expiresInDays) || 7)) * 86400000);
+
+      const out: any[] = [];
+      for (const p of targets) {
+        const token = crypto.randomBytes(24).toString("base64url");
+        const [link] = await db.insert(paymentLinks).values({
+          token, caseId, casePartyId: p.id, userId: p.userId, amount: linkAmount,
+          paymentType, goodsName, status: "active", expiresAt, createdBy: (req.user as any).id,
+        }).returning();
+        const url = `${PUBLIC_BASE}/pay/${token}`;
+        let sendStatus = "not_sent";
+        if (send && p.phone) {
+          const r = await sendSMS(p.phone,
+            `[법무법인 윈스] 허왕 변호사\n${goodsName} ${linkAmount.toLocaleString()}원\n결제: ${url}`,
+            { templateKey: "payment_link", caseId, casePartyId: p.id, paymentLinkId: link.id, dedupeKey: `paylink:${link.id}` });
+          sendStatus = r.status;
+        }
+        out.push({ partyId: p.id, name: p.name, url, sendStatus });
+      }
+      await logAudit(req, "create_payment_link", "payment_links", caseId, `${out.length}건`);
+      return res.json({ count: out.length, links: out });
+    } catch (err) {
+      console.error("결제링크 생성 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 관리자: 결제링크 목록(상태)
+  app.get("/api/admin/cases/:id/payment-links", requireAdmin, async (req, res) => {
+    try {
+      const caseId = parseInt(req.params.id);
+      const rows = await db.select().from(paymentLinks).where(eq(paymentLinks.caseId, caseId)).orderBy(desc(paymentLinks.createdAt));
+      return res.json(rows.map(({ token, ...r }) => ({ ...r, url: `${PUBLIC_BASE}/pay/${token}` })));
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 관리자: 재발송 (nonce 로 멱등 우회 → 의도적 재발송)
+  app.post("/api/admin/payment-links/:id/resend", requireAdmin, async (req, res) => {
+    try {
+      const [link] = await db.select().from(paymentLinks).where(eq(paymentLinks.id, parseInt(req.params.id))).limit(1);
+      if (!link) return res.status(404).json({ error: "링크를 찾을 수 없습니다." });
+      if (link.status !== "active") return res.status(400).json({ error: "활성 상태의 링크만 재발송할 수 있습니다." });
+      const [party] = link.casePartyId ? await db.select().from(caseParties).where(eq(caseParties.id, link.casePartyId)).limit(1) : [null];
+      if (!party?.phone) return res.status(400).json({ error: "당사자 전화번호가 없습니다." });
+      const url = `${PUBLIC_BASE}/pay/${link.token}`;
+      const r = await sendSMS(party.phone,
+        `[법무법인 윈스] 허왕 변호사\n${link.goodsName || "결제"} ${link.amount.toLocaleString()}원\n결제: ${url}`,
+        { templateKey: "payment_link", caseId: link.caseId, casePartyId: link.casePartyId || undefined, paymentLinkId: link.id, dedupeKey: `paylink:${link.id}:resend:${Date.now()}` });
+      return res.json({ status: r.status });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 관리자: 링크 취소(무효화)
+  app.post("/api/admin/payment-links/:id/cancel", requireAdmin, async (req, res) => {
+    try {
+      await db.update(paymentLinks).set({ status: "cancelled" }).where(eq(paymentLinks.id, parseInt(req.params.id)));
+      return res.json({ ok: true });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 공개(무인증): 단축링크 → API 결제 경로로 302 (prod에서 SPA catch-all 보다 먼저 매칭)
+  app.get("/pay/:token", payLinkLimiter, (req, res) => {
+    res.redirect(302, `/api/pay/${encodeURIComponent(req.params.token)}`);
+  });
+
+  // 공개(무인증): 토큰 검증 → NicePay 결제창(EUC-KR). nicepay 코어 재사용.
+  app.get("/api/pay/:token", payLinkLimiter, async (req, res) => {
+    try {
+      const [link] = await db.select().from(paymentLinks).where(eq(paymentLinks.token, req.params.token)).limit(1);
+      if (!link) return res.status(404).send(payLinkPage("유효하지 않은 결제 링크입니다."));
+      if (link.status === "used") return res.send(payLinkPage("이미 결제가 완료된 링크입니다."));
+      if (link.status === "cancelled") return res.send(payLinkPage("취소된 결제 링크입니다."));
+      if (link.status === "expired" || new Date() > link.expiresAt) {
+        if (link.status !== "expired") await db.update(paymentLinks).set({ status: "expired" }).where(eq(paymentLinks.id, link.id));
+        return res.send(payLinkPage("만료된 결제 링크입니다. 사무실로 문의해주세요."));
+      }
+      await db.update(paymentLinks).set({ openCount: sql`${paymentLinks.openCount} + 1` }).where(eq(paymentLinks.id, link.id));
+
+      const [party] = link.casePartyId ? await db.select().from(caseParties).where(eq(caseParties.id, link.casePartyId)).limit(1) : [null];
+      const [caseData] = await db.select().from(cases).where(eq(cases.id, link.caseId)).limit(1);
+      const session = await createPaymentSession({
+        caseId: link.caseId, casePartyId: link.casePartyId || undefined,
+        userId: link.userId || party?.userId || 0, amount: link.amount, paymentType: link.paymentType,
+        metadata: { paymentLinkId: link.id, source: "payment_link" },
+      });
+      await db.update(paymentLinks).set({ lastSessionOrderId: session.orderId }).where(eq(paymentLinks.id, link.id));
+
+      const html = generatePaymentFormHTML({
+        orderId: session.orderId, amount: session.amount,
+        goodsName: link.goodsName || `[결제] ${caseData?.title || "단체소송"}`,
+        buyerName: party?.name || "고객", buyerTel: party?.phone || "", buyerEmail: party?.email || "",
+        returnUrl: `${PUBLIC_BASE}/api/nicepay/callback`,
+        merchantId: session.merchantId, ediDate: session.ediDate, signData: session.signData,
+      });
+      res.setHeader("Content-Type", "text/html; charset=euc-kr");
+      return res.send(html);
+    } catch (err) {
+      console.error("결제링크 처리 오류:", err);
+      return res.status(500).send(payLinkPage("결제 처리 중 오류가 발생했습니다."));
+    }
+  });
+
+  // 공개(무인증): 본인취소 (토큰이 본인 인증 수단 — 당사자 폰으로 전달됨)
+  app.post("/api/pay/:token/cancel", payLinkLimiter, async (req, res) => {
+    try {
+      const { phoneLast4 } = req.body || {};
+      const [link] = await db.select().from(paymentLinks).where(eq(paymentLinks.token, req.params.token)).limit(1);
+      if (!link) return res.status(404).json({ error: "유효하지 않은 링크입니다." });
+      const [party] = link.casePartyId
+        ? await db.select().from(caseParties).where(eq(caseParties.id, link.casePartyId)).limit(1)
+        : [null];
+      // 본인확인: 결제 당사자 전화번호 뒷 4자리(토큰 유출 대비 최소 인증)
+      const partyPhone = (party?.phone || "").replace(/[^0-9]/g, "");
+      if (!phoneLast4 || !partyPhone || partyPhone.slice(-4) !== String(phoneLast4).trim()) {
+        return res.status(403).json({ error: "본인 확인에 실패했습니다. 결제 시 전화번호 뒷 4자리를 입력해주세요." });
+      }
+      if (party?.paymentStatus === "refunded") return res.status(400).json({ error: "이미 환불된 결제입니다." });
+      if (!link.lastSessionOrderId) return res.status(400).json({ error: "결제 내역이 없습니다." });
+      const [tx] = await db.select().from(paymentTransactions)
+        .where(and(eq(paymentTransactions.orderId, link.lastSessionOrderId), eq(paymentTransactions.status, "completed"))).limit(1);
+      if (!tx || !tx.tid) return res.status(400).json({ error: "취소할 결제 내역이 없습니다." });
+      const [caseData] = await db.select().from(cases).where(eq(cases.id, link.caseId)).limit(1);
+      if (caseData && caseData.status !== "recruiting") {
+        return res.status(400).json({ error: "소 제기 후에는 본인취소가 불가합니다. 사무실로 문의해주세요." });
+      }
+      const result = await cancelPayment(tx.tid, tx.orderId, tx.amount, "본인취소", false);
+      if (result.ResultCode === "2001") {
+        if (link.casePartyId) await db.update(caseParties).set({ paymentStatus: "refunded" }).where(eq(caseParties.id, link.casePartyId));
+        return res.json({ ok: true, message: "결제가 취소되었습니다." });
+      }
+      return res.status(400).json({ error: result.ResultMsg || "취소에 실패했습니다." });
+    } catch (err) {
+      console.error("본인취소 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
     }
   });
 

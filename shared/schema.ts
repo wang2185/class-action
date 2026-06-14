@@ -137,6 +137,25 @@ export const billingKeys = pgTable("billing_keys", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── 결제 링크 (토큰 단축링크 — 로그인 없이 클릭 결제) ───
+export const paymentLinks = pgTable("payment_links", {
+  id: serial("id").primaryKey(),
+  token: varchar("token", { length: 64 }).notNull().unique(), // randomBytes(24).base64url
+  caseId: integer("case_id").notNull().references(() => cases.id),
+  casePartyId: integer("case_party_id").references(() => caseParties.id),
+  userId: integer("user_id").references(() => users.id), // 결제 귀속 사용자(당사자 계정)
+  amount: integer("amount").notNull(),
+  paymentType: varchar("payment_type", { length: 30 }).notNull().default("retainer"),
+  goodsName: varchar("goods_name", { length: 200 }),
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active|used|cancelled|expired
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  lastSessionOrderId: varchar("last_session_order_id", { length: 100 }), // 최근 결제세션 orderId
+  openCount: integer("open_count").notNull().default(0), // 열람 횟수(남용 신호)
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── 사건 경과 업데이트 ───
 export const caseUpdates = pgTable("case_updates", {
   id: serial("id").primaryKey(),
@@ -338,3 +357,4 @@ export type DefendantDocument = typeof defendantDocuments.$inferSelect;
 export type Consent = typeof consents.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type PaymentLink = typeof paymentLinks.$inferSelect;

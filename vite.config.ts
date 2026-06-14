@@ -18,6 +18,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": "http://localhost:5001",
+      "/pay": "http://localhost:5001", // 결제 단축링크(개발 시 백엔드로 프록시)
     },
   },
 });

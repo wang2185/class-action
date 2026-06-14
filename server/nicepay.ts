@@ -52,6 +52,16 @@ function maskCardNumber(cardNum: string): string {
   return clean.substring(0, 6) + "****" + clean.substring(clean.length - 4);
 }
 
+// HTML 속성 이스케이프 — 결제 폼에 당사자 입력값(이름/이메일/상품명) 삽입 시 XSS 방지
+function escAttr(s: unknown): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // AES-128-ECB 암호화 (keyin용, EUC-KR)
 function encryptAES128(plainText: string, merchantKey: string): string {
   const key = Buffer.from(merchantKey.substring(0, 16), "utf8");
@@ -197,16 +207,16 @@ export function generatePaymentFormHTML(params: {
 <p style="text-align:center;margin-top:100px;font-family:sans-serif;">결제 페이지로 이동 중입니다...</p>
 <form id="payForm" method="POST" action="${getWebBase(params.merchantId)}/v3/v3Payment.jsp" accept-charset="euc-kr">
   <input type="hidden" name="PayMethod" value="CARD" />
-  <input type="hidden" name="GoodsName" value="${goodsNameEncoded}" />
-  <input type="hidden" name="Amt" value="${params.amount}" />
-  <input type="hidden" name="MID" value="${params.merchantId}" />
-  <input type="hidden" name="Moid" value="${params.orderId}" />
-  <input type="hidden" name="BuyerName" value="${params.buyerName}" />
-  <input type="hidden" name="BuyerTel" value="${params.buyerTel}" />
-  <input type="hidden" name="BuyerEmail" value="${params.buyerEmail}" />
-  <input type="hidden" name="ReturnURL" value="${params.returnUrl}" />
-  <input type="hidden" name="EdiDate" value="${params.ediDate}" />
-  <input type="hidden" name="SignData" value="${params.signData}" />
+  <input type="hidden" name="GoodsName" value="${escAttr(goodsNameEncoded)}" />
+  <input type="hidden" name="Amt" value="${Number(params.amount)}" />
+  <input type="hidden" name="MID" value="${escAttr(params.merchantId)}" />
+  <input type="hidden" name="Moid" value="${escAttr(params.orderId)}" />
+  <input type="hidden" name="BuyerName" value="${escAttr(params.buyerName)}" />
+  <input type="hidden" name="BuyerTel" value="${escAttr(params.buyerTel)}" />
+  <input type="hidden" name="BuyerEmail" value="${escAttr(params.buyerEmail)}" />
+  <input type="hidden" name="ReturnURL" value="${escAttr(params.returnUrl)}" />
+  <input type="hidden" name="EdiDate" value="${escAttr(params.ediDate)}" />
+  <input type="hidden" name="SignData" value="${escAttr(params.signData)}" />
   <input type="hidden" name="CharSet" value="euc-kr" />
   <input type="hidden" name="ReqReserved" value="" />
 </form>
