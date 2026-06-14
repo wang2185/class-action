@@ -141,8 +141,8 @@ export default function CaseProgress() {
               <p className="text-sm text-gray-400 mb-3">업로드된 증거가 없습니다.</p>
             )}
             <div className="mb-2">
-              <label className="label text-xs">자료 종류</label>
-              <select className="input text-sm" value={category} onChange={(e) => setCategory(e.target.value)} disabled={uploading}>
+              <label htmlFor="evidence-category" className="label text-xs">자료 종류</label>
+              <select id="evidence-category" name="category" className="input text-sm" value={category} onChange={(e) => setCategory(e.target.value)} disabled={uploading}>
                 {EVIDENCE_CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
@@ -153,7 +153,7 @@ export default function CaseProgress() {
               <input type="file" multiple className="hidden" onChange={handleFileUpload} disabled={uploading}
                 accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.zip,.mp4,.mov,.mp3,.wav,.txt" />
             </label>
-            {uploadMsg && <p className="text-xs text-center mt-2 text-gray-500">{uploadMsg}</p>}
+            {uploadMsg && <p role="alert" className="text-xs text-center mt-2 text-gray-500">{uploadMsg}</p>}
             <div className="mt-3 text-xs text-gray-500 bg-blue-50 rounded-lg p-3">
               <p className="font-semibold text-gray-600 mb-1">제출 권장 자료</p>
               <p>계약서·약관, 입금/결제내역, 카카오톡·문자 대화, 피해 사진, 통화 녹취 등 피해를 입증할 자료를 종류를 선택해 올려주세요.</p>

@@ -60,17 +60,17 @@ export default function AdminCaseUpdate() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-2">사건 경과 등록</h1>
       {caseData && <p className="text-gray-500 mb-6">{caseData.title}</p>}
-      {resultMsg && <div className="bg-blue-50 text-blue-700 text-sm p-3 rounded-lg mb-4">{resultMsg}</div>}
+      {resultMsg && <div role="alert" className="bg-blue-50 text-blue-700 text-sm p-3 rounded-lg mb-4">{resultMsg}</div>}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* 등록 폼 */}
         <div className="card space-y-4">
           <h2 className="font-bold text-lg">새 경과 등록</h2>
-          {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">{error}</div>}
+          {error && <div role="alert" className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">{error}</div>}
 
           <div>
-            <label className="label">유형</label>
-            <select className="input" value={form.updateType} onChange={(e) => { update("updateType", e.target.value); setNotify(e.target.value !== "notice"); }}>
+            <label htmlFor="update-type" className="label">유형</label>
+            <select id="update-type" name="updateType" className="input" value={form.updateType} onChange={(e) => { update("updateType", e.target.value); setNotify(e.target.value !== "notice"); }}>
               <option value="notice">공지</option>
               <option value="filing">소제기</option>
               <option value="hearing">기일</option>
@@ -80,16 +80,16 @@ export default function AdminCaseUpdate() {
             </select>
           </div>
           <div>
-            <label className="label">제목 *</label>
-            <input type="text" className="input" value={form.title} onChange={(e) => update("title", e.target.value)} required />
+            <label htmlFor="update-title" className="label">제목 *</label>
+            <input id="update-title" name="title" type="text" className="input" value={form.title} onChange={(e) => update("title", e.target.value)} required />
           </div>
           <div>
-            <label className="label">내용 *</label>
-            <textarea className="input min-h-[150px]" value={form.content} onChange={(e) => update("content", e.target.value)} required />
+            <label htmlFor="update-content" className="label">내용 *</label>
+            <textarea id="update-content" name="content" className="input min-h-[150px]" value={form.content} onChange={(e) => update("content", e.target.value)} required />
           </div>
           <div>
-            <label className="label">첨부파일</label>
-            <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} className="text-sm" />
+            <label htmlFor="update-attachment" className="label">첨부파일</label>
+            <input id="update-attachment" name="attachment" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} className="text-sm" />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.isPublic} onChange={(e) => update("isPublic", e.target.checked)}

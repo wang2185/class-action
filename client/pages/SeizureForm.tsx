@@ -26,7 +26,7 @@ export default function SeizureForm() {
     <div className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-2">가압류 신청</h1>
       {caseData && <p className="text-gray-500 mb-6">{caseData.title}</p>}
-      {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
+      {error && <div role="alert" className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
 
       <div className="card space-y-4">
         <div className="bg-yellow-50 rounded-lg p-4 text-sm text-yellow-800">
@@ -36,23 +36,23 @@ export default function SeizureForm() {
 
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="label">채권자 *</label>
-            <input type="text" className="input" value={form.creditorName} onChange={(e) => update("creditorName", e.target.value)} required />
+            <label htmlFor="seizure-creditor" className="label">채권자 *</label>
+            <input id="seizure-creditor" name="creditorName" type="text" className="input" value={form.creditorName} onChange={(e) => update("creditorName", e.target.value)} required />
           </div>
           <div>
-            <label className="label">채무자 *</label>
-            <input type="text" className="input" value={form.debtorName} onChange={(e) => update("debtorName", e.target.value)} required />
+            <label htmlFor="seizure-debtor" className="label">채무자 *</label>
+            <input id="seizure-debtor" name="debtorName" type="text" className="input" value={form.debtorName} onChange={(e) => update("debtorName", e.target.value)} required />
           </div>
         </div>
 
         <div>
-          <label className="label">가압류 금액 (원) *</label>
-          <input type="number" className="input" value={form.seizureAmount} onChange={(e) => update("seizureAmount", e.target.value)} required />
+          <label htmlFor="seizure-amount" className="label">가압류 금액 (원) *</label>
+          <input id="seizure-amount" name="seizureAmount" type="number" inputMode="numeric" className="input" value={form.seizureAmount} onChange={(e) => update("seizureAmount", e.target.value)} required />
         </div>
 
         <div>
-          <label className="label">대상 재산 유형 *</label>
-          <select className="input" value={form.propertyType} onChange={(e) => update("propertyType", e.target.value)}>
+          <label htmlFor="seizure-property-type" className="label">대상 재산 유형 *</label>
+          <select id="seizure-property-type" name="propertyType" className="input" value={form.propertyType} onChange={(e) => update("propertyType", e.target.value)}>
             <option value="real_estate">부동산</option>
             <option value="bank_account">예금채권 (은행계좌)</option>
             <option value="vehicle">자동차</option>
@@ -61,24 +61,24 @@ export default function SeizureForm() {
         </div>
 
         <div>
-          <label className="label">재산 상세 정보</label>
-          <textarea className="input min-h-[100px]" value={form.propertyDetail} onChange={(e) => update("propertyDetail", e.target.value)}
+          <label htmlFor="seizure-property-detail" className="label">재산 상세 정보</label>
+          <textarea id="seizure-property-detail" name="propertyDetail" className="input min-h-[100px]" value={form.propertyDetail} onChange={(e) => update("propertyDetail", e.target.value)}
             placeholder="부동산: 소재지, 지번 / 예금: 은행명, 지점 / 자동차: 차량번호 등" />
         </div>
 
         <div>
-          <label className="label">재산 시가 (원)</label>
-          <input type="number" className="input" value={form.propertyValue} onChange={(e) => update("propertyValue", e.target.value)} />
+          <label htmlFor="seizure-property-value" className="label">재산 시가 (원)</label>
+          <input id="seizure-property-value" name="propertyValue" type="number" inputMode="numeric" className="input" value={form.propertyValue} onChange={(e) => update("propertyValue", e.target.value)} />
         </div>
 
         <div>
-          <label className="label">관할법원</label>
-          <input type="text" className="input" value={form.courtName} onChange={(e) => update("courtName", e.target.value)} />
+          <label htmlFor="seizure-court" className="label">관할법원</label>
+          <input id="seizure-court" name="courtName" type="text" className="input" value={form.courtName} onChange={(e) => update("courtName", e.target.value)} />
         </div>
 
         <div>
-          <label className="label">가압류 사유 *</label>
-          <textarea className="input min-h-[150px]" value={form.seizureReason} onChange={(e) => update("seizureReason", e.target.value)} required
+          <label htmlFor="seizure-reason" className="label">가압류 사유 *</label>
+          <textarea id="seizure-reason" name="seizureReason" className="input min-h-[150px]" value={form.seizureReason} onChange={(e) => update("seizureReason", e.target.value)} required
             placeholder="가압류가 필요한 사유를 기재해주세요" />
         </div>
 

@@ -161,8 +161,8 @@ export default function AdminDefendants() {
         </div>
       </div>
 
-      {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error} <button onClick={() => setError("")} className="ml-2 font-bold">×</button></div>}
-      {success && <div className="bg-green-50 text-green-600 text-sm p-3 rounded-lg mb-4">{success}</div>}
+      {error && <div role="alert" className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error} <button type="button" aria-label="오류 메시지 닫기" onClick={() => setError("")} className="ml-2 font-bold">×</button></div>}
+      {success && <div role="alert" className="bg-green-50 text-green-600 text-sm p-3 rounded-lg mb-4">{success}</div>}
 
       {/* 통계 */}
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -235,66 +235,66 @@ export default function AdminDefendants() {
             <div className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">이름/상호 *</label>
-                  <input type="text" className="input" value={form.name} onChange={(e) => update("name", e.target.value)} />
+                  <label htmlFor="defendant-name" className="label">이름/상호 *</label>
+                  <input id="defendant-name" name="name" type="text" autoComplete="name" className="input" value={form.name} onChange={(e) => update("name", e.target.value)} />
                 </div>
                 <div>
-                  <label className="label">유형</label>
-                  <select className="input" value={form.partyType} onChange={(e) => update("partyType", e.target.value)}>
+                  <label htmlFor="defendant-party-type" className="label">유형</label>
+                  <select id="defendant-party-type" name="partyType" className="input" value={form.partyType} onChange={(e) => update("partyType", e.target.value)}>
                     <option value="individual">개인</option>
                     <option value="company">법인</option>
                   </select>
                 </div>
               </div>
               <div>
-                <label className="label">주소</label>
-                <input type="text" className="input" value={form.address} onChange={(e) => update("address", e.target.value)} />
+                <label htmlFor="defendant-address" className="label">주소</label>
+                <input id="defendant-address" name="address" type="text" autoComplete="street-address" className="input" value={form.address} onChange={(e) => update("address", e.target.value)} />
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">연락처</label>
-                  <input type="text" className="input" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
+                  <label htmlFor="defendant-phone" className="label">연락처</label>
+                  <input id="defendant-phone" name="phone" type="tel" inputMode="numeric" autoComplete="tel" className="input" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
                 </div>
                 <div>
-                  <label className="label">이메일</label>
-                  <input type="text" className="input" value={form.email} onChange={(e) => update("email", e.target.value)} />
+                  <label htmlFor="defendant-email" className="label">이메일</label>
+                  <input id="defendant-email" name="email" type="email" autoComplete="email" spellCheck={false} className="input" value={form.email} onChange={(e) => update("email", e.target.value)} />
                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">주민등록번호/사업자번호</label>
-                  <input type="text" className="input" value={form.residentNumber} onChange={(e) => update("residentNumber", e.target.value)} placeholder={editId ? "(변경시에만 입력)" : ""} />
+                  <label htmlFor="defendant-resident-number" className="label">주민등록번호/사업자번호</label>
+                  <input id="defendant-resident-number" name="residentNumber" type="text" autoComplete="off" spellCheck={false} className="input" value={form.residentNumber} onChange={(e) => update("residentNumber", e.target.value)} placeholder={editId ? "(변경시에만 입력)" : ""} />
                 </div>
                 <div>
-                  <label className="label">동호수</label>
-                  <input type="text" className="input" value={form.unitNumber} onChange={(e) => update("unitNumber", e.target.value)} placeholder="예: 101동 1201호" />
+                  <label htmlFor="defendant-unit-number" className="label">동호수</label>
+                  <input id="defendant-unit-number" name="unitNumber" type="text" className="input" value={form.unitNumber} onChange={(e) => update("unitNumber", e.target.value)} placeholder="예: 101동 1201호" />
                 </div>
               </div>
               {form.partyType === "company" && (
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="label">법인등록번호</label>
-                    <input type="text" className="input" value={form.companyRegNumber} onChange={(e) => update("companyRegNumber", e.target.value)} />
+                    <label htmlFor="defendant-company-reg-number" className="label">법인등록번호</label>
+                    <input id="defendant-company-reg-number" name="companyRegNumber" type="text" autoComplete="off" spellCheck={false} className="input" value={form.companyRegNumber} onChange={(e) => update("companyRegNumber", e.target.value)} />
                   </div>
                   <div>
-                    <label className="label">대표자명</label>
-                    <input type="text" className="input" value={form.representativeName} onChange={(e) => update("representativeName", e.target.value)} />
+                    <label htmlFor="defendant-representative-name" className="label">대표자명</label>
+                    <input id="defendant-representative-name" name="representativeName" type="text" autoComplete="name" className="input" value={form.representativeName} onChange={(e) => update("representativeName", e.target.value)} />
                   </div>
                 </div>
               )}
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">청구금액 (원)</label>
-                  <input type="number" className="input" value={form.claimAmount} onChange={(e) => update("claimAmount", e.target.value)} />
+                  <label htmlFor="defendant-claim-amount" className="label">청구금액 (원)</label>
+                  <input id="defendant-claim-amount" name="claimAmount" type="number" inputMode="numeric" className="input" value={form.claimAmount} onChange={(e) => update("claimAmount", e.target.value)} />
                 </div>
                 <div>
-                  <label className="label">계약일자</label>
-                  <input type="text" className="input" value={form.contractDate} onChange={(e) => update("contractDate", e.target.value)} placeholder="2025-01-15" />
+                  <label htmlFor="defendant-contract-date" className="label">계약일자</label>
+                  <input id="defendant-contract-date" name="contractDate" type="text" className="input" value={form.contractDate} onChange={(e) => update("contractDate", e.target.value)} placeholder="2025-01-15" />
                 </div>
               </div>
               <div>
-                <label className="label">비고</label>
-                <textarea className="input" rows={2} value={form.notes} onChange={(e) => update("notes", e.target.value)} />
+                <label htmlFor="defendant-notes" className="label">비고</label>
+                <textarea id="defendant-notes" name="notes" className="input" rows={2} value={form.notes} onChange={(e) => update("notes", e.target.value)} />
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending} className="btn-primary flex-1">
@@ -320,6 +320,7 @@ export default function AdminDefendants() {
               <p>이름(필수), 주소, 전화번호, 이메일, 청구금액, 계약일자, 동호수, 비고, 주민등록번호, 법인등록번호, 대표자명, 유형</p>
             </div>
             <textarea
+              name="bulkText"
               className="input font-mono text-xs min-h-[200px]"
               value={bulkText}
               onChange={(e) => setBulkText(e.target.value)}
@@ -342,8 +343,8 @@ export default function AdminDefendants() {
             <h2 className="text-xl font-bold mb-4">소송서류 생성</h2>
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="label">서류 유형</label>
-                <select className="input" value={genType} onChange={(e) => setGenType(e.target.value)}>
+                <label htmlFor="defendant-gen-type" className="label">서류 유형</label>
+                <select id="defendant-gen-type" name="genType" className="input" value={genType} onChange={(e) => setGenType(e.target.value)}>
                   <option value="payment_order">지급명령 신청서</option>
                   <option value="complaint">소장</option>
                   <option value="seizure">가압류 신청서</option>

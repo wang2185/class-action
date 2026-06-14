@@ -33,15 +33,15 @@ export default function Login() {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="card max-w-md w-full">
         <h1 className="text-2xl font-bold text-center mb-6">로그인</h1>
-        {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
+        {error && <div role="alert" className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label">이메일</label>
-            <input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="example@email.com" />
+            <label htmlFor="login-email" className="label">이메일</label>
+            <input id="login-email" name="email" type="email" inputMode="email" autoComplete="username" spellCheck={false} className="input" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="example@email.com" />
           </div>
           <div>
-            <label className="label">비밀번호</label>
-            <input type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="8자 이상" />
+            <label htmlFor="login-password" className="label">비밀번호</label>
+            <input id="login-password" name="password" type="password" autoComplete="current-password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="8자 이상" />
           </div>
           <button type="submit" disabled={loading} className="btn-primary w-full">
             {loading ? "로그인 중…" : "로그인"}

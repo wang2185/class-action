@@ -42,7 +42,7 @@ export default function BillingKeyRegister() {
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
         <div className="card py-12">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg aria-hidden="true" className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
@@ -58,7 +58,7 @@ export default function BillingKeyRegister() {
     <div className="max-w-lg mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-2">성공보수 카드 등록</h1>
       {caseData && <p className="text-gray-500 mb-6">{caseData.title}</p>}
-      {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
+      {error && <div role="alert" className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
 
       <div className="card">
         <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800 mb-6">
@@ -68,33 +68,33 @@ export default function BillingKeyRegister() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label">카드번호 *</label>
-            <input type="text" className="input" value={form.cardNumber} onChange={(e) => update("cardNumber", e.target.value.replace(/\D/g, ""))}
+            <label htmlFor="billing-card-number" className="label">카드번호 *</label>
+            <input id="billing-card-number" name="cardNumber" type="text" inputMode="numeric" autoComplete="off" spellCheck={false} className="input" value={form.cardNumber} onChange={(e) => update("cardNumber", e.target.value.replace(/\D/g, ""))}
               required maxLength={16} placeholder="0000 0000 0000 0000" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">유효기간 (월) *</label>
-              <input type="text" className="input" value={form.expMonth} onChange={(e) => update("expMonth", e.target.value.replace(/\D/g, ""))}
+              <label htmlFor="billing-exp-month" className="label">유효기간 (월) *</label>
+              <input id="billing-exp-month" name="expMonth" type="text" inputMode="numeric" autoComplete="off" spellCheck={false} className="input" value={form.expMonth} onChange={(e) => update("expMonth", e.target.value.replace(/\D/g, ""))}
                 required maxLength={2} placeholder="MM" />
             </div>
             <div>
-              <label className="label">유효기간 (년) *</label>
-              <input type="text" className="input" value={form.expYear} onChange={(e) => update("expYear", e.target.value.replace(/\D/g, ""))}
+              <label htmlFor="billing-exp-year" className="label">유효기간 (년) *</label>
+              <input id="billing-exp-year" name="expYear" type="text" inputMode="numeric" autoComplete="off" spellCheck={false} className="input" value={form.expYear} onChange={(e) => update("expYear", e.target.value.replace(/\D/g, ""))}
                 required maxLength={2} placeholder="YY" />
             </div>
           </div>
 
           <div>
-            <label className="label">카드 비밀번호 앞 2자리 *</label>
-            <input type="password" className="input" value={form.cardPw} onChange={(e) => update("cardPw", e.target.value.replace(/\D/g, ""))}
+            <label htmlFor="billing-card-pw" className="label">카드 비밀번호 앞 2자리 *</label>
+            <input id="billing-card-pw" name="cardPw" type="password" inputMode="numeric" autoComplete="off" spellCheck={false} className="input" value={form.cardPw} onChange={(e) => update("cardPw", e.target.value.replace(/\D/g, ""))}
               required maxLength={2} placeholder="**" />
           </div>
 
           <div>
-            <label className="label">생년월일 (6자리) 또는 사업자번호 *</label>
-            <input type="text" className="input" value={form.idNo} onChange={(e) => update("idNo", e.target.value.replace(/\D/g, ""))}
+            <label htmlFor="billing-id-no" className="label">생년월일 (6자리) 또는 사업자번호 *</label>
+            <input id="billing-id-no" name="idNo" type="text" inputMode="numeric" autoComplete="off" spellCheck={false} className="input" value={form.idNo} onChange={(e) => update("idNo", e.target.value.replace(/\D/g, ""))}
               required maxLength={10} placeholder="YYMMDD" />
           </div>
 

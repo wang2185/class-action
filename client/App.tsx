@@ -24,6 +24,8 @@ import AdminDefendants from "./pages/admin/Defendants";
 import CasePackage from "./pages/admin/CasePackage";
 import AdminCaseRequests from "./pages/admin/CaseRequests";
 import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Consent from "./pages/Consent";
 import Guide from "./pages/Guide";
 import Lawyer from "./pages/Lawyer";
 import CaseRequest from "./pages/CaseRequest";
@@ -71,6 +73,8 @@ export default function App() {
               <Route path="/request" element={<CaseRequest />} />
               <Route path="/faq" element={<Faq />} />
               <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/consent" element={<Consent />} />
 
               {/* 로그인 필수 */}
               <Route path="/my" element={<ProtectedRoute><MyCases /></ProtectedRoute>} />

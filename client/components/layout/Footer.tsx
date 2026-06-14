@@ -70,7 +70,11 @@ export default function Footer() {
           </div>
         </div>
         <div className="mt-8 pt-6 border-t border-gray-800 text-xs text-center space-y-1">
-          <div><Link to="/privacy" className="hover:text-white transition-colors">개인정보처리방침</Link></div>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+            <Link to="/terms" className="hover:text-white transition-colors">이용약관</Link>
+            <Link to="/privacy" className="hover:text-white transition-colors font-medium text-gray-300">개인정보처리방침</Link>
+            <Link to="/consent" className="hover:text-white transition-colors">개인정보 수집·이용 동의서</Link>
+          </div>
           <div>&copy; {new Date().getFullYear()} 법무법인 윈스 · 허왕 변호사. All rights reserved.</div>
         </div>
       </div>

@@ -60,7 +60,7 @@ export default function Contract() {
       <h1 className="text-2xl font-bold mb-2">사건 수임계약</h1>
       {caseData && <p className="text-gray-500 mb-6">{caseData.title}</p>}
 
-      {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
+      {error && <div role="alert" className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
 
       <div className="card space-y-6">
         {/* 계약 내용 */}

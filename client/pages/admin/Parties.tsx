@@ -41,7 +41,7 @@ export default function AdminParties() {
       <h1 className="text-2xl font-bold mb-2">당사자 관리</h1>
       {caseData && <p className="text-gray-500 mb-6">{caseData.title} — {parties?.length || 0}명</p>}
 
-      {linkMsg && <div className="bg-blue-50 text-blue-700 text-sm p-3 rounded-lg mb-4 break-all">{linkMsg}</div>}
+      {linkMsg && <div role="alert" className="bg-blue-50 text-blue-700 text-sm p-3 rounded-lg mb-4 break-all">{linkMsg}</div>}
 
       {isLoading ? (
         <p className="text-center py-8 text-gray-400">불러오는 중…</p>
@@ -87,6 +87,8 @@ export default function AdminParties() {
                   <td className="py-3 text-center">
                     <div className="flex flex-col items-center gap-1">
                       <select
+                        name="status"
+                        aria-label={`${p.name} 상태 변경`}
                         className="text-xs border rounded px-2 py-1"
                         value={p.status}
                         onChange={(e) => statusMutation.mutate({ partyId: p.id, status: e.target.value })}
