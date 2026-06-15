@@ -138,6 +138,29 @@ async function notifyNewCaseRequest(reqId: number, data: { name: string; phone: 
   }
 }
 
+// 사건 요청 신청자에게 처리 결과 안내(채택/개설 시). 멱등(상태별 1회). 거래성 통지.
+async function notifyCaseRequester(reqRow: any, status: string) {
+  const title = oneLine(reqRow.title || "사건 요청");
+  const link = `${PUBLIC_BASE}/cases`;
+  const ctx = { templateKey: `case_request_${status}`, dedupeKey: `case_request_status:${reqRow.id}:${status}` };
+  const tail = status === "converted"
+    ? "사건이 개설되었습니다. 진행 안내를 위해 곧 연락드리겠습니다."
+    : "검토 결과 진행을 위해 담당자가 곧 연락드리겠습니다.";
+  if (reqRow.phone) {
+    await sendSMS(reqRow.phone, `[로사이어티] 요청하신 "${title}" 건을 검토했습니다.\n${tail}\n${link}`, ctx);
+  }
+  if (reqRow.email) {
+    const html = `<div style="font-family:sans-serif;line-height:1.7;color:#1f2937;">
+<p>안녕하세요, ${escapeHtml(reqRow.name)}님.</p>
+<p>요청하신 <strong>${escapeHtml(reqRow.title)}</strong> 건을 검토했습니다.</p>
+<p>${escapeHtml(tail)}</p>
+<p style="margin-top:12px;"><a href="${link}">진행 중인 사건 보기</a></p>
+<p style="color:#9ca3af;font-size:12px;margin-top:16px;">법무법인 윈스 · 허왕 변호사</p>
+</div>`;
+    await sendEmail(reqRow.email, "[로사이어티] 사건 요청 검토 안내", html, ctx);
+  }
+}
+
 // 감사 로그 기록 헬퍼
 async function logAudit(req: Request, action: string, tableName?: string, recordId?: number, details?: string) {
   try {
@@ -1743,9 +1766,24 @@ export function registerRoutes(app: Express) {
       if (typeof req.body?.status === "string" && allowed.includes(req.body.status)) patch.status = req.body.status;
       if (typeof req.body?.adminNote === "string") patch.adminNote = req.body.adminNote.slice(0, 2000);
       if (!Object.keys(patch).length) return res.status(400).json({ error: "변경할 내용이 없습니다." });
-      const [updated] = await db.update(caseRequests).set(patch).where(eq(caseRequests.id, id)).returning();
-      if (!updated) return res.status(404).json({ error: "요청을 찾을 수 없습니다." });
+      const [before] = await db.select().from(caseRequests).where(eq(caseRequests.id, id)).limit(1);
+      if (!before) return res.status(404).json({ error: "요청을 찾을 수 없습니다." });
+      const isTransition = !!patch.status && patch.status !== before.status && ["accepted", "converted"].includes(patch.status);
+      // 상태 전환은 원자적으로: 직전 상태가 일치할 때만 적용(동시 PATCH 중복 알림 방지)
+      const cond = isTransition
+        ? and(eq(caseRequests.id, id), eq(caseRequests.status, before.status))
+        : eq(caseRequests.id, id);
+      const [updated] = await db.update(caseRequests).set(patch).where(cond).returning();
+      if (!updated) {
+        // 동시 전환 등으로 조건 불일치 → 최신값 반환(중복 알림 없음)
+        const [cur] = await db.select().from(caseRequests).where(eq(caseRequests.id, id)).limit(1);
+        return res.json(cur || before);
+      }
       await logAudit(req, "update_case_request", "case_requests", id, patch.status);
+      // 채택/개설로 '실제 전환'한 PATCH만 신청자에게 1회 안내(비차단)
+      if (isTransition) {
+        notifyCaseRequester(updated, patch.status!).catch((e) => console.error("사건요청 신청자 알림 오류:", e));
+      }
       res.json(updated);
     } catch (e) {
       res.status(500).json({ error: "수정 실패" });
