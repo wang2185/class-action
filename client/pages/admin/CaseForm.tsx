@@ -1,11 +1,19 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "../../lib/queryClient";
 import { useState, useEffect } from "react";
 
+const STRUCTURE_LABEL: Record<string, string> = {
+  many_plaintiffs: "다수 피해자(공동·집단소송)",
+  many_defendants: "다수 상대방(일괄 청구·지급명령·가압류)",
+  other: "기타·미정",
+};
+
 export default function AdminCaseForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromRequest = (location.state as any)?.fromRequest; // 사건 요청에서 전환 시 전달
   const isEdit = !!id;
 
   const [form, setForm] = useState({
@@ -40,14 +48,42 @@ export default function AdminCaseForm() {
     }
   }, [existing]);
 
+  // 사건 요청에서 전환 시 1회 프리필 (다수 상대방이면 지급명령·가압류 기본 활성)
+  useEffect(() => {
+    if (!isEdit && fromRequest) {
+      const md = fromRequest.caseStructure === "many_defendants";
+      setForm((prev) => ({
+        ...prev,
+        title: fromRequest.title || "",
+        description: fromRequest.content || "",
+        defendant: fromRequest.opponent || "",
+        supportsPaymentOrder: md ? true : prev.supportsPaymentOrder,
+        supportsProvisionalSeizure: md ? true : prev.supportsProvisionalSeizure,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit]);
+
   const mutation = useMutation({
     mutationFn: (data: any) =>
       isEdit
         ? apiRequest(`/api/admin/cases/${id}`, { method: "PUT", body: JSON.stringify(data) })
         : apiRequest("/api/admin/cases", { method: "POST", body: JSON.stringify(data) }),
-    onSuccess: () => {
+    onSuccess: async (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["cases"] });
-      navigate("/admin");
+      // 요청에서 전환된 경우: 해당 요청을 '개설완료'로 표시하고 구조에 맞는 다음 단계로 이동
+      if (!isEdit && fromRequest?.id) {
+        try {
+          await apiRequest(`/api/admin/case-requests/${fromRequest.id}`, { method: "PATCH", body: JSON.stringify({ status: "converted" }) });
+          queryClient.invalidateQueries({ queryKey: ["caseRequests"] });
+        } catch { /* 전환 표시 실패해도 사건은 생성됨 */ }
+      }
+      const newId = data?.id;
+      if (!isEdit && fromRequest?.caseStructure === "many_defendants" && newId) {
+        navigate(`/admin/cases/${newId}/defendants`); // 다수 상대방 → 상대방 일괄 등록으로
+      } else {
+        navigate("/admin");
+      }
     },
     onError: (err: any) => setError(err.message),
   });
@@ -57,6 +93,12 @@ export default function AdminCaseForm() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">{isEdit ? "사건 편집" : "새 사건 등록"}</h1>
+      {!isEdit && fromRequest && (
+        <div className="bg-primary-50 border border-primary-200 text-primary-800 text-sm p-3 rounded-lg mb-4">
+          사건 요청에서 가져왔습니다 — 형태: <strong>{STRUCTURE_LABEL[fromRequest.caseStructure] || "미지정"}</strong>
+          {fromRequest.caseStructure === "many_defendants" && " · 지급명령·가압류를 기본 활성화했습니다. 등록 후 상대방을 일괄 추가하세요."}
+        </div>
+      )}
       {error && <div role="alert" className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
 
       <div className="card space-y-4">

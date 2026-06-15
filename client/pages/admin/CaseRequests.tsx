@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/queryClient";
 
@@ -24,6 +24,7 @@ function fmtDate(s: string) {
 
 function RequestCard({ r }: { r: any }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState(r.adminNote || "");
 
@@ -67,6 +68,15 @@ function RequestCard({ r }: { r: any }) {
             <p className="text-gray-500 text-sm mb-1">피해 내용</p>
             <p className="text-sm whitespace-pre-wrap bg-gray-50 rounded-lg p-3 leading-relaxed">{r.content}</p>
           </div>
+          {r.status === "converted" ? (
+            <div className="text-sm text-green-700 bg-green-50 rounded-lg p-2.5 text-center">이미 사건으로 개설된 요청입니다.</div>
+          ) : (
+            <button
+              onClick={() => navigate("/admin/cases/new", { state: { fromRequest: { id: r.id, title: r.title, content: r.content, opponent: r.opponent, category: r.category, caseStructure: r.caseStructure } } })}
+              className="btn-primary text-sm w-full">
+              이 요청으로 사건 만들기 →
+            </button>
+          )}
           <div>
             <label className="label">내부 메모</label>
             <textarea className="input min-h-[70px]" value={note} onChange={(e) => setNote(e.target.value)} placeholder="검토 메모(고객에게 노출되지 않음)" />
