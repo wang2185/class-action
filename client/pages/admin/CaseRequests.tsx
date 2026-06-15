@@ -11,6 +11,11 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   converted: { label: "개설완료", cls: "bg-green-100 text-green-700" },
 };
 const STATUS_KEYS = ["new", "reviewing", "accepted", "declined", "converted"];
+const STRUCTURE: Record<string, string> = {
+  many_plaintiffs: "다수 피해자(공동·집단)",
+  many_defendants: "다수 상대방(일괄 청구)",
+  other: "기타·미정",
+};
 
 function fmtDate(s: string) {
   try { return new Date(s).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" }); }
@@ -39,6 +44,7 @@ function RequestCard({ r }: { r: any }) {
           <div className="flex items-center gap-2 mb-1">
             <span className={`badge ${st.cls}`}>{st.label}</span>
             {r.category && <span className="text-xs text-gray-500">{r.category}</span>}
+            {r.caseStructure && <span className="text-xs text-primary-600">· {STRUCTURE[r.caseStructure] || r.caseStructure}</span>}
           </div>
           <h3 className="font-bold truncate">{r.title}</h3>
           <p className="text-sm text-gray-500 mt-0.5">
@@ -51,8 +57,10 @@ function RequestCard({ r }: { r: any }) {
       {open && (
         <div className="mt-4 pt-4 border-t space-y-3">
           <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+            <p><span className="text-gray-500">사건 형태:</span> {r.caseStructure ? (STRUCTURE[r.caseStructure] || r.caseStructure) : "-"}</p>
             <p><span className="text-gray-500">상대방:</span> {r.opponent || "-"}</p>
-            <p><span className="text-gray-500">예상 규모:</span> {r.headcount || "-"}</p>
+            <p><span className="text-gray-500">예상 피해자 수:</span> {r.headcount || "-"}</p>
+            <p><span className="text-gray-500">예상 상대방 수:</span> {r.opponentCount || "-"}</p>
             <p><span className="text-gray-500">예상 피해액:</span> {r.damageScale || "-"}</p>
           </div>
           <div>

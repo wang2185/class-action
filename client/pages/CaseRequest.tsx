@@ -10,8 +10,8 @@ const CATEGORIES = [
 
 export default function CaseRequest() {
   const [form, setForm] = useState({
-    name: "", phone: "", email: "", category: "",
-    title: "", opponent: "", headcount: "", damageScale: "", content: "",
+    name: "", phone: "", email: "", category: "", caseStructure: "",
+    title: "", opponent: "", headcount: "", opponentCount: "", damageScale: "", content: "",
   });
   const [agree, setAgree] = useState(false);
   const [website, setWebsite] = useState(""); // 허니팟(봇 탐지용 — 사용자에게 숨김)
@@ -64,7 +64,7 @@ export default function CaseRequest() {
         </span>
         <h1 className="text-3xl font-extrabold text-ink mb-3">이런 피해, 함께 대응하고 싶다면</h1>
         <p className="text-ink-muted leading-relaxed">
-          같은 피해를 입은 분이 여럿이라면 새로운 사건을 열 수 있습니다.<br className="hidden md:block" />
+          여러 피해자가 함께, 또는 여러 상대방에게 한 번에 — 새로운 사건을 시작할 수 있습니다.<br className="hidden md:block" />
           피해 내용을 알려주시면 허왕 변호사가 직접 검토합니다.
         </p>
       </div>
@@ -76,6 +76,24 @@ export default function CaseRequest() {
         <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true"
           value={website} onChange={(e) => setWebsite(e.target.value)}
           style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }} />
+
+        <div role="group" aria-label="사건 형태">
+          <span className="label">사건 형태</span>
+          <div className="grid sm:grid-cols-3 gap-2">
+            {[
+              { v: "many_plaintiffs", t: "여러 피해자가 함께", d: "같은 가해자·사안에 다수 피해 (공동·집단소송)" },
+              { v: "many_defendants", t: "여러 상대방에게 청구", d: "여러 채무자·피고를 일괄 (지급명령·가압류 등)" },
+              { v: "other", t: "기타 / 미정", d: "아직 잘 모르겠어요" },
+            ].map((o) => (
+              <button type="button" key={o.v} onClick={() => update("caseStructure", o.v)} aria-pressed={form.caseStructure === o.v}
+                className={`text-left rounded-xl border p-3 transition ${form.caseStructure === o.v ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500" : "border-gray-200 hover:bg-gray-50"}`}>
+                <div className="text-sm font-semibold text-ink">{o.t}</div>
+                <div className="text-xs text-gray-500 mt-0.5 leading-snug">{o.d}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="cr-name" className="label">이름 *</label>
@@ -107,15 +125,24 @@ export default function CaseRequest() {
         </div>
 
         <div>
-          <label htmlFor="cr-opponent" className="label">상대방 (가해자·회사)</label>
-          <input id="cr-opponent" name="opponent" className="input" value={form.opponent} onChange={(e) => update("opponent", e.target.value)} placeholder="예: 주식회사 ○○ / 개인…" />
+          <label htmlFor="cr-opponent" className="label">{form.caseStructure === "many_defendants" ? "상대방 (여러 명·예시로 일부)" : "상대방 (가해자·회사)"}</label>
+          <input id="cr-opponent" name="opponent" className="input" value={form.opponent} onChange={(e) => update("opponent", e.target.value)}
+            placeholder={form.caseStructure === "many_defendants" ? "예: 임차인 30여 명 / 거래처 다수…" : "예: 주식회사 ○○ / 개인…"} />
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="cr-headcount" className="label">예상 피해자 규모</label>
-            <input id="cr-headcount" name="headcount" className="input" value={form.headcount} onChange={(e) => update("headcount", e.target.value)} placeholder="예: 약 50명…" />
-          </div>
+          {form.caseStructure !== "many_defendants" && (
+            <div>
+              <label htmlFor="cr-headcount" className="label">예상 피해자(원고) 규모</label>
+              <input id="cr-headcount" name="headcount" className="input" value={form.headcount} onChange={(e) => update("headcount", e.target.value)} placeholder="예: 약 50명…" />
+            </div>
+          )}
+          {form.caseStructure !== "many_plaintiffs" && (
+            <div>
+              <label htmlFor="cr-opponent-count" className="label">예상 상대방 수</label>
+              <input id="cr-opponent-count" name="opponentCount" className="input" value={form.opponentCount} onChange={(e) => update("opponentCount", e.target.value)} placeholder="예: 약 30곳·명…" />
+            </div>
+          )}
           <div>
             <label htmlFor="cr-damage" className="label">예상 피해 금액</label>
             <input id="cr-damage" name="damageScale" className="input" value={form.damageScale} onChange={(e) => update("damageScale", e.target.value)} placeholder="예: 1인당 약 500만원…" />

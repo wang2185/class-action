@@ -1693,6 +1693,8 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "이메일 형식을 확인해주세요." });
       }
       const email = emailRaw || null;
+      const structures = ["many_plaintiffs", "many_defendants", "other"];
+      const caseStructure = structures.includes(b.caseStructure) ? b.caseStructure : null;
       const [created] = await db.insert(caseRequests).values({
         name,
         phone: phoneDigits,
@@ -1701,7 +1703,9 @@ export function registerRoutes(app: Express) {
         title,
         opponent: clip(b.opponent, 500) || null,
         content,
+        caseStructure,
         headcount: clip(b.headcount, 100) || null,
+        opponentCount: clip(b.opponentCount, 100) || null,
         damageScale: clip(b.damageScale, 100) || null,
         userId: (req.user as any)?.id || null,
         ipAddress: req.ip || req.headers["x-forwarded-for"]?.toString() || null,

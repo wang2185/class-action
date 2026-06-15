@@ -317,7 +317,9 @@ export const caseRequests = pgTable("case_requests", {
   title: varchar("title", { length: 500 }).notNull(), // 한 줄 요약
   opponent: varchar("opponent", { length: 500 }), // 가해자/상대방(회사·개인)
   content: text("content").notNull(), // 피해 내용 상세
-  headcount: varchar("headcount", { length: 100 }), // 예상 피해자 규모(대략)
+  caseStructure: varchar("case_structure", { length: 20 }), // many_plaintiffs(다수 원고) | many_defendants(다수 상대방) | other
+  headcount: varchar("headcount", { length: 100 }), // 예상 피해자(원고) 규모(대략)
+  opponentCount: varchar("opponent_count", { length: 100 }), // 예상 상대방(피고·채무자) 수(대략)
   damageScale: varchar("damage_scale", { length: 100 }), // 예상 피해 금액(대략)
   status: varchar("status", { length: 30 }).notNull().default("new"),
   // new(접수) → reviewing(검토중) → accepted(채택·개설예정) → declined(반려) → converted(사건개설완료)
