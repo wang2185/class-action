@@ -44,7 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: () => apiRequest("/api/auth/logout", { method: "POST" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["auth"] }),
+    // 로그아웃 후 /api/auth/me 는 401 → invalidate(재요청)하면 react-query 가 이전 user 를
+    // 그대로 유지해 화면이 안 바뀜. 캐시를 직접 null 로 세팅해 즉시 로그아웃 반영.
+    onSuccess: () => queryClient.setQueryData(["auth"], null),
   });
 
   return (
