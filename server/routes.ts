@@ -1353,10 +1353,14 @@ export function registerRoutes(app: Express) {
   // 사건 삭제 (관리자) — FK가 cascade가 아니라 의존 테이블을 순서대로 트랜잭션 삭제
   app.delete("/api/admin/cases/:id", requireAdmin, async (req, res) => {
     try {
-      const caseId = parseInt(req.params.id, 10);
-      if (!Number.isInteger(caseId)) return res.status(400).json({ error: "잘못된 요청" });
+      if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: "잘못된 요청" });
+      const caseId = Number(req.params.id);
       const [target] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
       if (!target) return res.status(404).json({ error: "사건을 찾을 수 없습니다." });
+      // 회계·법적 보존: 결제완료/환불 거래가 있으면 하드삭제 금지
+      const [paidTx] = await db.select({ id: paymentTransactions.id }).from(paymentTransactions)
+        .where(and(eq(paymentTransactions.caseId, caseId), inArray(paymentTransactions.status, ["completed", "refunded"]))).limit(1);
+      if (paidTx) return res.status(409).json({ error: "결제 완료·환불 내역이 있는 사건은 삭제할 수 없습니다(회계·법적 보존 대상)." });
 
       // 디스크 파일 경로 수집(커밋 후 정리)
       const ev = await db.select({ p: evidence.filePath }).from(evidence).where(eq(evidence.caseId, caseId));
@@ -1448,8 +1452,8 @@ export function registerRoutes(app: Express) {
   // 경과 수정 (관리자)
   app.put("/api/admin/case-updates/:id", requireAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id, 10);
-      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: "잘못된 요청" });
+      const id = Number(req.params.id);
       const patch: any = {};
       if (typeof req.body?.title === "string") patch.title = req.body.title;
       if (typeof req.body?.content === "string") patch.content = req.body.content;
@@ -1468,8 +1472,8 @@ export function registerRoutes(app: Express) {
   // 경과 삭제 (관리자) — 발송 로그 정리 + 첨부 삭제
   app.delete("/api/admin/case-updates/:id", requireAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id, 10);
-      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: "잘못된 요청" });
+      const id = Number(req.params.id);
       const [target] = await db.select().from(caseUpdates).where(eq(caseUpdates.id, id)).limit(1);
       if (!target) return res.status(404).json({ error: "경과를 찾을 수 없습니다." });
       await db.transaction(async (tx) => {
@@ -1517,10 +1521,14 @@ export function registerRoutes(app: Express) {
   // 당사자 삭제 (관리자) — 의존행 정리 + 참여 인원 재집계
   app.delete("/api/admin/parties/:id", requireAdmin, async (req, res) => {
     try {
-      const partyId = parseInt(req.params.id, 10);
-      if (!Number.isInteger(partyId)) return res.status(400).json({ error: "잘못된 요청" });
+      if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: "잘못된 요청" });
+      const partyId = Number(req.params.id);
       const [party] = await db.select().from(caseParties).where(eq(caseParties.id, partyId)).limit(1);
       if (!party) return res.status(404).json({ error: "당사자를 찾을 수 없습니다." });
+      // 회계·법적 보존: 결제완료/환불 거래가 있으면 하드삭제 금지
+      const [paidTx] = await db.select({ id: paymentTransactions.id }).from(paymentTransactions)
+        .where(and(eq(paymentTransactions.casePartyId, partyId), inArray(paymentTransactions.status, ["completed", "refunded"]))).limit(1);
+      if (paidTx) return res.status(409).json({ error: "결제 완료·환불 내역이 있는 당사자는 삭제할 수 없습니다(회계·법적 보존 대상)." });
       const files = await db.select({ p: evidence.filePath }).from(evidence).where(eq(evidence.casePartyId, partyId));
 
       await db.transaction(async (tx) => {
@@ -2139,8 +2147,8 @@ export function registerRoutes(app: Express) {
   // 사건요청 삭제 (관리자) — 참조 테이블 없음, 단건 삭제
   app.delete("/api/admin/case-requests/:id", requireAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id, 10);
-      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: "잘못된 요청" });
+      const id = Number(req.params.id);
       const [deleted] = await db.delete(caseRequests).where(eq(caseRequests.id, id)).returning();
       if (!deleted) return res.status(404).json({ error: "요청을 찾을 수 없습니다." });
       await logAudit(req, "delete_data", "case_requests", id, deleted.title);
