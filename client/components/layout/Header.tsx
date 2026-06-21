@@ -13,9 +13,9 @@ export default function Header() {
           <img
             src="/brand/logo-header.png"
             alt="로사이어티 집단소송 · 법무법인 윈스"
-            width={387}
-            height={120}
-            className="h-9 w-auto"
+            width={1168}
+            height={200}
+            className="h-10 w-auto"
             decoding="async"
           />
         </Link>
