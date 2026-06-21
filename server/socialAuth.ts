@@ -6,7 +6,7 @@ import crypto from "crypto";
 import { db } from "./db";
 import { users, socialAccounts } from "../shared/schema";
 import { eq, and } from "drizzle-orm";
-import { loginWithSessionRegeneration } from "./auth";
+import { loginWithSessionRegeneration, requireAuth } from "./auth";
 
 const PUBLIC_BASE = (process.env.PUBLIC_BASE_URL || process.env.CORS_ORIGIN || "https://class.lawciety.com").replace(/\/$/, "");
 
@@ -110,7 +110,8 @@ export function registerSocialAuth(app: Express) {
     if (!isProviderConfigured(key)) return res.redirect(`${PUBLIC_BASE}/login?error=provider_unavailable`);
     const c = creds(p);
     const state = crypto.randomBytes(16).toString("hex");
-    (req.session as any).oauth = { state, provider: key, redirect: safePath(req.query.redirect) };
+    const linkUserId = req.query.link === "1" && req.isAuthenticated() ? (req.user as any).id : undefined;
+    (req.session as any).oauth = { state, provider: key, redirect: safePath(req.query.redirect), linkUserId };
     const params = new URLSearchParams({
       response_type: "code",
       client_id: c.id!,
@@ -162,6 +163,15 @@ export function registerSocialAuth(app: Express) {
       const verifiedEmail = email && profile.emailVerified ? email : null; // 제공자가 검증한 이메일만 연결 허용
       const name = (profile.name || `${p.label} 사용자`).slice(0, 100);
 
+      // 로그인 상태에서 '연결' 요청 → 현재 계정에 소셜 연결(로그인/가입 아님)
+      if (sess.linkUserId) {
+        const [exist] = await db.select().from(socialAccounts)
+          .where(and(eq(socialAccounts.provider, key), eq(socialAccounts.providerUserId, providerUserId))).limit(1);
+        if (exist && exist.userId !== sess.linkUserId) return res.redirect(`${PUBLIC_BASE}/account?error=already_linked`);
+        if (!exist) await db.insert(socialAccounts).values({ userId: sess.linkUserId, provider: key, providerUserId, email });
+        return res.redirect(`${PUBLIC_BASE}/account?linked=${key}`);
+      }
+
       // 계정 해소(트랜잭션): (provider,uid) → 검증 이메일 연결 → 신규생성.
       // ⚠ 미검증 이메일은 기존 계정에 자동 연결하지 않음(계정 탈취 방지).
       let resolved: { userId: number; isNew: boolean } | null = null;
@@ -204,6 +214,37 @@ export function registerSocialAuth(app: Express) {
     } catch (e) {
       console.error(`소셜 로그인(${key}) 오류:`, e);
       return fail("social_error");
+    }
+  });
+
+  // 내 연결된 소셜 계정 + 사용 가능한 제공자
+  app.get("/api/auth/social-accounts", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = (req.user as any).id;
+      const linked = await db
+        .select({ id: socialAccounts.id, provider: socialAccounts.provider, email: socialAccounts.email, createdAt: socialAccounts.createdAt })
+        .from(socialAccounts).where(eq(socialAccounts.userId, userId));
+      const providers = Object.values(PROVIDERS).map((p) => ({ key: p.key, label: p.label, enabled: isProviderConfigured(p.key) }));
+      return res.json({ linked, providers });
+    } catch (e) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 소셜 연결 해제 (유일 로그인 수단이면 차단)
+  app.delete("/api/auth/social-accounts/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = (req.user as any).id;
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const all = await db.select().from(socialAccounts).where(eq(socialAccounts.userId, userId));
+      if (!all.find((a) => a.id === id)) return res.status(404).json({ error: "연결 정보가 없습니다." });
+      const [u] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!u?.password && all.length <= 1) return res.status(400).json({ error: "유일한 로그인 수단입니다. 비밀번호 설정 후 해제하세요." });
+      await db.delete(socialAccounts).where(and(eq(socialAccounts.id, id), eq(socialAccounts.userId, userId)));
+      return res.json({ ok: true });
+    } catch (e) {
+      return res.status(500).json({ error: "서버 오류" });
     }
   });
 }

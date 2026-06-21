@@ -33,6 +33,7 @@ import Faq from "./pages/Faq";
 import Welcome from "./pages/Welcome";
 import Account from "./pages/Account";
 import MyPayments from "./pages/MyPayments";
+import MyPaymentMethods from "./pages/MyPaymentMethods";
 import MyNotifications from "./pages/MyNotifications";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -90,6 +91,7 @@ export default function App() {
               <Route path="/my" element={<ProtectedRoute><MyCases /></ProtectedRoute>} />
               <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
               <Route path="/my/payments" element={<ProtectedRoute><MyPayments /></ProtectedRoute>} />
+              <Route path="/my/payment-methods" element={<ProtectedRoute><MyPaymentMethods /></ProtectedRoute>} />
               <Route path="/my/notifications" element={<ProtectedRoute><MyNotifications /></ProtectedRoute>} />
               <Route path="/cases/:id/join" element={<ProtectedRoute><JoinCase /></ProtectedRoute>} />
               <Route path="/cases/:id/contract" element={<ProtectedRoute><Contract /></ProtectedRoute>} />

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
 import { usePageMeta } from "../hooks/use-page-meta";
+import MemberTabs from "../components/MemberTabs";
 
 const STATUS_LABELS: Record<string, string> = {
   recruiting: "모집중", filed: "소 제기", in_progress: "진행중", settled: "합의", closed: "종결",
@@ -51,13 +52,8 @@ export default function MyCases() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <h1 className="text-2xl md:text-3xl font-bold">내 사건</h1>
-        <div className="flex items-center gap-2">
-          <Link to="/my/payments" className="btn-secondary text-sm">결제 내역</Link>
-          <Link to="/my/notifications" className="btn-secondary text-sm">알림</Link>
-        </div>
-      </div>
+      <MemberTabs />
+      <h1 className="text-2xl md:text-3xl font-bold mb-6">내 사건</h1>
 
       {!isLoading && list.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">

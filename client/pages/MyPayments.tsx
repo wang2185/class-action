@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../lib/queryClient";
 import { usePageMeta } from "../hooks/use-page-meta";
+import MemberTabs from "../components/MemberTabs";
 
 const TYPE: Record<string, string> = { retainer: "착수금", payment_order: "지급명령", seizure: "가압류" };
 const STATUS: Record<string, string> = { completed: "완료", pending: "대기", failed: "실패", refunded: "환불" };
@@ -19,10 +20,8 @@ export default function MyPayments() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <h1 className="text-2xl font-extrabold text-ink">결제 내역</h1>
-        <Link to="/my" className="btn-secondary text-sm">내 사건</Link>
-      </div>
+      <MemberTabs />
+      <h1 className="text-2xl font-extrabold text-ink mb-6">결제 내역</h1>
 
       {!!(txs && txs.length) && (
         <div className="card mb-5">

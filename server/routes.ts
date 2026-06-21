@@ -656,6 +656,21 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // 내 결제수단(빌링키) 목록
+  app.get("/api/my/billing-keys", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const rows = await db
+        .select({ id: billingKeys.id, cardName: billingKeys.cardName, cardNum: billingKeys.cardNum, caseId: billingKeys.caseId, createdAt: billingKeys.createdAt })
+        .from(billingKeys)
+        .where(and(eq(billingKeys.userId, userId), eq(billingKeys.isActive, true)))
+        .orderBy(desc(billingKeys.createdAt));
+      return res.json(rows);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
   // ═══════════════════════════════════════════
   // 증거 업로드 API
   // ═══════════════════════════════════════════

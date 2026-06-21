@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../lib/queryClient";
 import { usePageMeta } from "../hooks/use-page-meta";
+import MemberTabs from "../components/MemberTabs";
 
 const CH: Record<string, string> = { sms: "문자", email: "이메일", alimtalk: "알림톡" };
 function label(k: string): string {
@@ -20,10 +21,8 @@ export default function MyNotifications() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <h1 className="text-2xl font-extrabold text-ink">알림</h1>
-        <Link to="/my" className="btn-secondary text-sm">내 사건</Link>
-      </div>
+      <MemberTabs />
+      <h1 className="text-2xl font-extrabold text-ink mb-6">알림</h1>
 
       {isLoading ? (
         <p className="text-gray-400 py-12 text-center">불러오는 중…</p>
