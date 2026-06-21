@@ -1,7 +1,7 @@
 // 간편인증(소셜 로그인) — 카카오·네이버·구글 OAuth2 Authorization Code 플로우.
 // 제공자별 .env 자격증명이 있을 때만 활성화(없으면 버튼 숨김·라우트 404 안내).
 // 보안: state(CSRF) 세션 검증, redirect 화이트리스트(자체 경로만), 토큰은 서버에서만 교환.
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import { db } from "./db";
 import { users, socialAccounts } from "../shared/schema";
@@ -103,10 +103,11 @@ export function registerSocialAuth(app: Express) {
   app.get("/api/auth/providers", (_req, res) => res.json({ providers: enabledProviders() }));
 
   // 1) 인가 시작
-  app.get("/api/auth/:provider", (req: Request, res: Response) => {
+  app.get("/api/auth/:provider", (req: Request, res: Response, next: NextFunction) => {
     const key = req.params.provider;
     const p = PROVIDERS[key];
-    if (!p || !isProviderConfigured(key)) return res.redirect(`${PUBLIC_BASE}/login?error=provider_unavailable`);
+    if (!p) return next(); // 'me'·예약 경로는 가로채지 않고 다음 핸들러로 (라우트 셰도잉 방지)
+    if (!isProviderConfigured(key)) return res.redirect(`${PUBLIC_BASE}/login?error=provider_unavailable`);
     const c = creds(p);
     const state = crypto.randomBytes(16).toString("hex");
     (req.session as any).oauth = { state, provider: key, redirect: safePath(req.query.redirect) };
@@ -121,12 +122,13 @@ export function registerSocialAuth(app: Express) {
   });
 
   // 2) 콜백
-  app.get("/api/auth/:provider/callback", async (req: Request, res: Response) => {
+  app.get("/api/auth/:provider/callback", async (req: Request, res: Response, next: NextFunction) => {
     const key = req.params.provider;
     const p = PROVIDERS[key];
+    if (!p) return next();
     const fail = (reason: string) => res.redirect(`${PUBLIC_BASE}/login?error=${encodeURIComponent(reason)}`);
     try {
-      if (!p || !isProviderConfigured(key)) return fail("provider_unavailable");
+      if (!isProviderConfigured(key)) return fail("provider_unavailable");
       const sess = (req.session as any).oauth;
       const { code, state } = req.query as Record<string, string>;
       if (!code || !state || !sess || sess.provider !== key || sess.state !== state) return fail("invalid_state");
