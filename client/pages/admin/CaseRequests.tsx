@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/queryClient";
+import AdminNav from "../../components/AdminNav";
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   new: { label: "신규", cls: "bg-accent-100 text-accent-700" },
@@ -31,6 +32,11 @@ function RequestCard({ r }: { r: any }) {
   const mut = useMutation({
     mutationFn: (patch: any) => apiRequest(`/api/admin/case-requests/${r.id}`, { method: "PATCH", body: JSON.stringify(patch) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["caseRequests"] }),
+  });
+  const delMut = useMutation({
+    mutationFn: () => apiRequest(`/api/admin/case-requests/${r.id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["caseRequests"] }),
+    onError: (e: any) => alert(e?.message || "삭제 실패"),
   });
 
   const st = STATUS[r.status] || STATUS.new;
@@ -92,6 +98,9 @@ function RequestCard({ r }: { r: any }) {
               {mut.isPending ? "저장 중…" : "메모 저장"}
             </button>
           </div>
+          <div className="flex justify-end pt-1">
+            <button onClick={() => { if (window.confirm(`'${r.title}' 사건요청을 삭제하시겠습니까? 되돌릴 수 없습니다.`)) delMut.mutate(); }} disabled={delMut.isPending} className="text-xs text-red-600 hover:underline disabled:opacity-50">이 요청 삭제</button>
+          </div>
         </div>
       )}
     </div>
@@ -107,10 +116,8 @@ export default function CaseRequests() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-3xl font-bold">사건 요청</h1>
-        <Link to="/admin" className="text-sm text-primary-500 hover:underline">← 대시보드</Link>
-      </div>
+      <AdminNav />
+      <h1 className="text-2xl md:text-3xl font-bold mb-1">사건 요청</h1>
       <p className="text-gray-500 text-sm mb-6">고객이 제출한 새 사건 제보입니다. 검토 후 상태를 변경하세요.</p>
 
       <div className="flex flex-wrap gap-2 mb-6">

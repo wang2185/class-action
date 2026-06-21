@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "../../lib/queryClient";
 import { useAuth } from "../../hooks/use-auth";
+import AdminNav from "../../components/AdminNav";
 
 const ROLES = [{ v: "member", l: "회원" }, { v: "lawyer", l: "변호사" }, { v: "admin", l: "관리자" }, { v: "owner", l: "오너" }];
 const ROLE_CLS: Record<string, string> = { owner: "bg-rose-100 text-rose-700", admin: "bg-accent-100 text-accent-700", lawyer: "bg-purple-100 text-purple-700", member: "bg-gray-100 text-gray-600" };
@@ -34,10 +35,8 @@ export default function AdminUsers() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <h1 className="text-2xl md:text-3xl font-bold">사용자 · 권한</h1>
-        <Link to="/admin" className="btn-secondary">대시보드</Link>
-      </div>
+      <AdminNav />
+      <h1 className="text-2xl md:text-3xl font-bold mb-6">사용자 · 권한</h1>
 
       <div className="card">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">

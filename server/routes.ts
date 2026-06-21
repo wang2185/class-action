@@ -1350,6 +1350,44 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // 사건 삭제 (관리자) — FK가 cascade가 아니라 의존 테이블을 순서대로 트랜잭션 삭제
+  app.delete("/api/admin/cases/:id", requireAdmin, async (req, res) => {
+    try {
+      const caseId = parseInt(req.params.id, 10);
+      if (!Number.isInteger(caseId)) return res.status(400).json({ error: "잘못된 요청" });
+      const [target] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+      if (!target) return res.status(404).json({ error: "사건을 찾을 수 없습니다." });
+
+      // 디스크 파일 경로 수집(커밋 후 정리)
+      const ev = await db.select({ p: evidence.filePath }).from(evidence).where(eq(evidence.caseId, caseId));
+      const dd = await db.select({ p: defendantDocuments.filePath }).from(defendantDocuments).where(eq(defendantDocuments.caseId, caseId));
+      const cu = await db.select({ p: caseUpdates.attachmentPath }).from(caseUpdates).where(eq(caseUpdates.caseId, caseId));
+
+      await db.transaction(async (tx) => {
+        await tx.delete(evidence).where(eq(evidence.caseId, caseId));
+        await tx.delete(paymentSessions).where(eq(paymentSessions.caseId, caseId));
+        await tx.delete(paymentTransactions).where(eq(paymentTransactions.caseId, caseId));
+        await tx.delete(billingKeys).where(eq(billingKeys.caseId, caseId));
+        await tx.delete(paymentLinks).where(eq(paymentLinks.caseId, caseId));
+        await tx.delete(paymentOrders).where(eq(paymentOrders.caseId, caseId));
+        await tx.delete(provisionalSeizures).where(eq(provisionalSeizures.caseId, caseId));
+        await tx.delete(caseUpdates).where(eq(caseUpdates.caseId, caseId));
+        await tx.delete(defendantDocuments).where(eq(defendantDocuments.caseId, caseId));
+        await tx.delete(defendants).where(eq(defendants.caseId, caseId));
+        await tx.delete(caseParties).where(eq(caseParties.caseId, caseId));
+        await tx.delete(notifications).where(eq(notifications.caseId, caseId));
+        await tx.delete(cases).where(eq(cases.id, caseId));
+      });
+
+      await logAudit(req, "delete_data", "cases", caseId, `사건 삭제: ${target.title}`);
+      [...ev, ...dd, ...cu].forEach((r) => r.p && deleteFile(r.p)); // 디스크 정리(베스트 에포트)
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("사건 삭제 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
   // 사건 경과 업데이트 추가
   app.post("/api/admin/cases/:id/updates", requireAdmin, upload.single("attachment"), async (req: any, res) => {
     try {
@@ -1407,6 +1445,45 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // 경과 수정 (관리자)
+  app.put("/api/admin/case-updates/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const patch: any = {};
+      if (typeof req.body?.title === "string") patch.title = req.body.title;
+      if (typeof req.body?.content === "string") patch.content = req.body.content;
+      if (typeof req.body?.updateType === "string") patch.updateType = req.body.updateType;
+      if (req.body?.isPublic !== undefined) patch.isPublic = req.body.isPublic === true || req.body.isPublic === "true";
+      if (!Object.keys(patch).length) return res.status(400).json({ error: "변경할 내용이 없습니다." });
+      const [updated] = await db.update(caseUpdates).set(patch).where(eq(caseUpdates.id, id)).returning();
+      if (!updated) return res.status(404).json({ error: "경과를 찾을 수 없습니다." });
+      await logAudit(req, "update_case_update", "case_updates", id);
+      return res.json(updated);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 경과 삭제 (관리자) — 발송 로그 정리 + 첨부 삭제
+  app.delete("/api/admin/case-updates/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const [target] = await db.select().from(caseUpdates).where(eq(caseUpdates.id, id)).limit(1);
+      if (!target) return res.status(404).json({ error: "경과를 찾을 수 없습니다." });
+      await db.transaction(async (tx) => {
+        await tx.delete(notifications).where(eq(notifications.caseUpdateId, id));
+        await tx.delete(caseUpdates).where(eq(caseUpdates.id, id));
+      });
+      await logAudit(req, "delete_data", "case_updates", id, target.title);
+      if (target.attachmentPath) deleteFile(target.attachmentPath);
+      return res.json({ ok: true });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
   // 당사자 목록 (관리자) — 감사 로그 기록
   app.get("/api/admin/cases/:id/parties", requireAdmin, async (req, res) => {
     try {
@@ -1433,6 +1510,38 @@ export function registerRoutes(app: Express) {
         .returning();
       return res.json(updated);
     } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 당사자 삭제 (관리자) — 의존행 정리 + 참여 인원 재집계
+  app.delete("/api/admin/parties/:id", requireAdmin, async (req, res) => {
+    try {
+      const partyId = parseInt(req.params.id, 10);
+      if (!Number.isInteger(partyId)) return res.status(400).json({ error: "잘못된 요청" });
+      const [party] = await db.select().from(caseParties).where(eq(caseParties.id, partyId)).limit(1);
+      if (!party) return res.status(404).json({ error: "당사자를 찾을 수 없습니다." });
+      const files = await db.select({ p: evidence.filePath }).from(evidence).where(eq(evidence.casePartyId, partyId));
+
+      await db.transaction(async (tx) => {
+        await tx.delete(evidence).where(eq(evidence.casePartyId, partyId));
+        await tx.delete(paymentSessions).where(eq(paymentSessions.casePartyId, partyId));
+        await tx.delete(paymentTransactions).where(eq(paymentTransactions.casePartyId, partyId));
+        await tx.delete(billingKeys).where(eq(billingKeys.casePartyId, partyId));
+        await tx.delete(paymentLinks).where(eq(paymentLinks.casePartyId, partyId));
+        await tx.delete(paymentOrders).where(eq(paymentOrders.casePartyId, partyId));
+        await tx.delete(provisionalSeizures).where(eq(provisionalSeizures.casePartyId, partyId));
+        await tx.delete(notifications).where(eq(notifications.casePartyId, partyId));
+        await tx.delete(caseParties).where(eq(caseParties.id, partyId));
+        const [{ c }] = await tx.select({ c: count() }).from(caseParties).where(eq(caseParties.caseId, party.caseId));
+        await tx.update(cases).set({ currentCount: Number(c) }).where(eq(cases.id, party.caseId));
+      });
+
+      await logAudit(req, "delete_data", "case_parties", partyId, `당사자 삭제: ${party.name}`);
+      files.forEach((r) => r.p && deleteFile(r.p));
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("당사자 삭제 오류:", err);
       return res.status(500).json({ error: "서버 오류" });
     }
   });
@@ -2024,6 +2133,20 @@ export function registerRoutes(app: Express) {
       res.json(updated);
     } catch (e) {
       res.status(500).json({ error: "수정 실패" });
+    }
+  });
+
+  // 사건요청 삭제 (관리자) — 참조 테이블 없음, 단건 삭제
+  app.delete("/api/admin/case-requests/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const [deleted] = await db.delete(caseRequests).where(eq(caseRequests.id, id)).returning();
+      if (!deleted) return res.status(404).json({ error: "요청을 찾을 수 없습니다." });
+      await logAudit(req, "delete_data", "case_requests", id, deleted.title);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: "삭제 실패" });
     }
   });
 

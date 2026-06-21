@@ -54,6 +54,20 @@ export default function AdminCaseUpdate() {
     onError: (e: any) => setResultMsg(e.message || "재발송 실패"),
   });
 
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<any>({ title: "", content: "", updateType: "notice", isPublic: true });
+
+  const editMutation = useMutation({
+    mutationFn: ({ updateId, ...data }: any) => apiRequest(`/api/admin/case-updates/${updateId}`, { method: "PUT", body: JSON.stringify(data) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["caseUpdates", id] }); setEditId(null); setResultMsg("경과를 수정했습니다."); },
+    onError: (e: any) => setResultMsg(e.message || "수정 실패"),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (updateId: number) => apiRequest(`/api/admin/case-updates/${updateId}`, { method: "DELETE" }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["caseUpdates", id] }); setResultMsg("경과를 삭제했습니다."); },
+    onError: (e: any) => setResultMsg(e.message || "삭제 실패"),
+  });
+
   const update = (field: string, value: any) => setForm((prev) => ({ ...prev, [field]: value }));
 
   return (
@@ -115,15 +129,41 @@ export default function AdminCaseUpdate() {
             <div className="space-y-3 max-h-[500px] overflow-y-auto">
               {updates.map((u: any) => (
                 <div key={u.id} className="bg-gray-50 rounded-lg p-3 text-sm">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="badge bg-primary-100 text-primary-700 text-xs">{u.updateType}</span>
-                    <span className="text-xs text-gray-400">{new Date(u.createdAt).toLocaleDateString("ko-KR")}</span>
-                    {!u.isPublic && <span className="badge bg-red-100 text-red-600 text-xs">비공개</span>}
-                  </div>
-                  <p className="font-medium">{u.title}</p>
-                  <p className="text-gray-500 text-xs mt-1 line-clamp-2">{u.content}</p>
-                  <button onClick={() => resendMutation.mutate(u.id)} disabled={resendMutation.isPending}
-                    className="text-xs text-accent-500 hover:underline mt-2 disabled:opacity-50">알림 재발송</button>
+                  {editId === u.id ? (
+                    <div className="space-y-2">
+                      <select className="input" value={editForm.updateType} onChange={(e) => setEditForm({ ...editForm, updateType: e.target.value })}>
+                        <option value="notice">공지</option><option value="filing">소제기</option><option value="hearing">기일</option>
+                        <option value="ruling">판결</option><option value="settlement">합의</option><option value="document">서류</option>
+                      </select>
+                      <input className="input" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="제목" />
+                      <textarea className="input min-h-[90px]" value={editForm.content} onChange={(e) => setEditForm({ ...editForm, content: e.target.value })} placeholder="내용" />
+                      <label className="flex items-center gap-2 cursor-pointer text-xs">
+                        <input type="checkbox" checked={editForm.isPublic} onChange={(e) => setEditForm({ ...editForm, isPublic: e.target.checked })} className="w-4 h-4" />당사자에게 공개
+                      </label>
+                      <div className="flex gap-2">
+                        <button onClick={() => editMutation.mutate({ updateId: u.id, ...editForm })} disabled={editMutation.isPending} className="btn-primary text-xs px-3 py-1">{editMutation.isPending ? "저장 중…" : "저장"}</button>
+                        <button onClick={() => setEditId(null)} className="btn-secondary text-xs px-3 py-1">취소</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="badge bg-primary-100 text-primary-700 text-xs">{u.updateType}</span>
+                        <span className="text-xs text-gray-400">{new Date(u.createdAt).toLocaleDateString("ko-KR")}</span>
+                        {!u.isPublic && <span className="badge bg-red-100 text-red-600 text-xs">비공개</span>}
+                      </div>
+                      <p className="font-medium">{u.title}</p>
+                      <p className="text-gray-500 text-xs mt-1 line-clamp-2">{u.content}</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <button onClick={() => resendMutation.mutate(u.id)} disabled={resendMutation.isPending}
+                          className="text-xs text-accent-500 hover:underline disabled:opacity-50">알림 재발송</button>
+                        <button onClick={() => { setEditId(u.id); setEditForm({ title: u.title, content: u.content, updateType: u.updateType, isPublic: u.isPublic }); }}
+                          className="text-xs text-primary-600 hover:underline">수정</button>
+                        <button onClick={() => { if (window.confirm("이 경과를 삭제하시겠습니까? 되돌릴 수 없습니다.")) deleteMutation.mutate(u.id); }} disabled={deleteMutation.isPending}
+                          className="text-xs text-red-600 hover:underline disabled:opacity-50">삭제</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

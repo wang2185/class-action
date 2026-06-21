@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/queryClient";
+import AdminNav from "../../components/AdminNav";
 
 const ACTION_LABELS: Record<string, string> = {
   view_parties: "당사자 조회", view_defendants: "상대방 조회", view_evidence: "증거 조회",
@@ -27,10 +28,8 @@ export default function AdminAuditLogs() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <h1 className="text-2xl md:text-3xl font-bold">감사 로그</h1>
-        <Link to="/admin" className="btn-secondary">대시보드</Link>
-      </div>
+      <AdminNav />
+      <h1 className="text-2xl md:text-3xl font-bold mb-6">감사 로그</h1>
       <div className="card">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <h2 className="font-bold text-lg">개인정보 접근 이력 <span className="text-sm text-gray-400 font-normal">(최근 1,000건)</span></h2>

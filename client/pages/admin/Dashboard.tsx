@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/queryClient";
 import { useAuth } from "../../hooks/use-auth";
+import AdminNav from "../../components/AdminNav";
 
 const STATUS_LABELS: Record<string, string> = {
   recruiting: "모집중", filed: "소 제기", in_progress: "진행중", settled: "합의", closed: "종결",
@@ -40,10 +41,21 @@ export default function AdminDashboard() {
     { to: "/admin/audit-logs", title: "감사 로그", desc: `개인정보 접근 이력 · 발송 ${stats?.notificationsSent ?? 0}` },
   ];
 
+  const qc = useQueryClient();
+  const del = useMutation({
+    mutationFn: (cid: number) => apiRequest(`/api/admin/cases/${cid}`, { method: "DELETE" }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["cases"] }); qc.invalidateQueries({ queryKey: ["adminStats"] }); },
+    onError: (e: any) => alert(e?.message || "삭제 실패"),
+  });
+  function confirmDelete(c: any) {
+    if (window.confirm(`'${c.title}' 사건을 삭제하시겠습니까?\n당사자·증거·결제·경과 등 연결된 모든 데이터가 함께 삭제되며 되돌릴 수 없습니다.`)) del.mutate(c.id);
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8 gap-3 flex-wrap">
-        <h1 className="text-2xl md:text-3xl font-bold">관리자 대시보드</h1>
+      <AdminNav />
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+        <h1 className="text-2xl md:text-3xl font-bold">사건관리</h1>
         <Link to="/admin/cases/new" className="btn-primary">새 사건 등록</Link>
       </div>
 
@@ -117,6 +129,7 @@ export default function AdminDashboard() {
                         <Link to={`/admin/cases/${c.id}/defendants`} className="text-orange-600 hover:underline">상대방</Link>
                         <Link to={`/admin/cases/${c.id}/update`} className="text-green-600 hover:underline">경과</Link>
                         {isLawyer && <Link to={`/admin/cases/${c.id}/package`} className="text-purple-600 hover:underline">서면자료</Link>}
+                        <button onClick={() => confirmDelete(c)} disabled={del.isPending} className="text-red-600 hover:underline disabled:opacity-50">삭제</button>
                       </div>
                     </td>
                   </tr>

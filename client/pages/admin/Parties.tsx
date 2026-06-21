@@ -45,6 +45,15 @@ export default function AdminParties() {
     onError: (e: any) => setMsg(e.message || "결제링크 발송 실패"),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (partyId: number) => apiRequest(`/api/admin/parties/${partyId}`, { method: "DELETE" }),
+    onSuccess: () => { setMsg("당사자를 삭제했습니다."); queryClient.invalidateQueries({ queryKey: ["adminParties", id] }); },
+    onError: (e: any) => setMsg(e.message || "삭제 실패"),
+  });
+  function confirmDelete(p: any) {
+    if (window.confirm(`'${p.name}' 당사자를 삭제하시겠습니까?\n증거·결제기록 등 연결 데이터가 함께 삭제되며 되돌릴 수 없습니다.`)) deleteMutation.mutate(p.id);
+  }
+
   const all = Array.isArray(parties) ? parties : [];
   const summary = useMemo(() => ({
     total: all.length,
@@ -160,6 +169,7 @@ export default function AdminParties() {
                           {Object.entries(PARTY_STATUS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select>
                         <button onClick={() => linkMutation.mutate(p.id)} disabled={linkMutation.isPending} className="text-xs text-accent-600 hover:underline disabled:opacity-50">결제링크 발송</button>
+                        <button onClick={() => confirmDelete(p)} disabled={deleteMutation.isPending} className="text-xs text-red-600 hover:underline disabled:opacity-50">삭제</button>
                       </div>
                     </td>
                   </tr>
