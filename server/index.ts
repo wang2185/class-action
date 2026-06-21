@@ -8,7 +8,8 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import { setupAuth } from "./auth";
 import { registerRoutes } from "./routes";
-import { buildCaseOg, injectCaseOg } from "./og";
+import { buildCaseOg } from "./og";
+import { registerSeoRoutes, getRouteSeo, caseSeo, injectSeo } from "./seo";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -61,6 +62,9 @@ setupAuth(app);
 // API Routes
 registerRoutes(app);
 
+// SEO/AEO/GEO: robots.txt · sitemap.xml · llms.txt (SPA catch-all·static 보다 먼저 등록)
+registerSeoRoutes(app);
+
 // Static files (uploaded evidence)
 app.use("/uploads", express.static(path.resolve("public/uploads")));
 
@@ -80,13 +84,20 @@ if (isProd) {
       return res.status(404).json({ error: "API 경로를 찾을 수 없습니다." });
     }
     if (!indexHtml) return res.sendFile(indexPath);
-    // 사건 상세는 사건별 OG 메타 주입(카카오톡/페북 링크 미리보기)
-    const m = req.path.match(/^\/cases\/(\d+)\/?$/);
-    if (m) {
-      const og = await buildCaseOg(parseInt(m[1], 10));
-      if (og) return res.send(injectCaseOg(indexHtml, og));
+    try {
+      // 사건 상세: 사건값으로 메타+OG+구조화데이터 주입(링크 미리보기·검색·답변/생성AI)
+      const m = req.path.match(/^\/cases\/(\d+)\/?$/);
+      if (m) {
+        const id = parseInt(m[1], 10);
+        const og = await buildCaseOg(id);
+        if (og) return res.send(injectSeo(indexHtml, caseSeo(og, id)));
+        return res.send(injectSeo(indexHtml, { title: "사건을 찾을 수 없습니다 | 로사이어티 집단소송", description: "요청하신 사건을 찾을 수 없습니다.", path: req.path, robots: "noindex,follow" }));
+      }
+      return res.send(injectSeo(indexHtml, getRouteSeo(req.path)));
+    } catch (e) {
+      console.error("SEO 주입 오류:", e);
+      return res.send(indexHtml);
     }
-    res.send(indexHtml);
   });
 }
 

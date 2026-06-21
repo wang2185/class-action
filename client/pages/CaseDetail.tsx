@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
 import { useAuth } from "../hooks/use-auth";
 import ShareButtons from "../components/ShareButtons";
+import { usePageMeta } from "../hooks/use-page-meta";
 
 const STATUS_LABELS: Record<string, string> = {
   recruiting: "모집중", filed: "소 제기", in_progress: "진행중", settled: "합의", closed: "종결",
@@ -31,6 +32,11 @@ export default function CaseDetail() {
     queryKey: ["defendantCount", id],
     queryFn: () => apiRequest(`/api/cases/${id}/defendant-count`),
   });
+
+  usePageMeta(
+    caseData?.title ? `${caseData.title} | 로사이어티 집단소송` : undefined,
+    (caseData?.summary || caseData?.description || undefined) as string | undefined,
+  );
 
   if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]">불러오는 중…</div>;
   if (!caseData) return <div className="flex items-center justify-center min-h-[60vh]">사건을 찾을 수 없습니다.</div>;

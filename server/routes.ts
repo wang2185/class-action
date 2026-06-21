@@ -118,7 +118,7 @@ async function notifyCaseParties(caseId: number, update: { id: number; title: st
 }
 
 // 새 사건 요청(제보) 접수 시 윈스(허왕)에게 알림. ADMIN_ALERT_PHONE(SMS)+ADMIN_ALERT_EMAIL(메일).
-async function notifyNewCaseRequest(reqId: number, data: { name: string; phone: string; title: string; category?: string | null; opponent?: string | null }) {
+async function notifyNewCaseRequest(reqId: number, data: { name: string; phone: string; email?: string | null; title: string; category?: string | null; opponent?: string | null }) {
   const adminUrl = `${PUBLIC_BASE}/admin/case-requests`;
   const ctx = { templateKey: "case_request_new", dedupeKey: `case_request:${reqId}` };
   const smsText = `[로사이어티] 새 사건 요청 접수\n${oneLine(data.title)}\n요청자: ${oneLine(data.name)}\n확인: ${adminUrl}`;
@@ -131,10 +131,30 @@ async function notifyNewCaseRequest(reqId: number, data: { name: string; phone: 
 <p>제목: ${escapeHtml(data.title)}</p>
 <p>유형: ${escapeHtml(data.category || "-")}</p>
 <p>상대방: ${escapeHtml(data.opponent || "-")}</p>
-<p>요청자: ${escapeHtml(data.name)} (${escapeHtml(data.phone)})</p>
+<p>요청자: ${escapeHtml(data.name)} (${escapeHtml(data.phone)}${data.email ? " · " + escapeHtml(data.email) : ""})</p>
 <p style="margin-top:12px;"><a href="${adminUrl}">관리자에서 확인하기</a></p>
 </div>`;
     await sendEmail(adminEmail, `[로사이어티] 새 사건 요청 — ${oneLine(data.title)}`, html, ctx);
+  }
+}
+
+// 새 사건 요청 접수 즉시 신청자 본인에게 접수확인 발송(SMS 필수+이메일 선택). 거래성 통지·멱등.
+async function notifyCaseRequestReceived(reqRow: { id: number; name: string; phone: string; email: string | null; title: string }) {
+  const title = oneLine(reqRow.title || "사건 요청");
+  const link = `${PUBLIC_BASE}/cases`;
+  const ctx = { templateKey: "case_request_received", dedupeKey: `case_request_received:${reqRow.id}` };
+  if (reqRow.phone) {
+    await sendSMS(reqRow.phone, `[로사이어티] "${title}" 사건 요청이 정상 접수되었습니다.\n담당자가 검토 후 입력하신 연락처로 곧 연락드리겠습니다.\n법무법인 윈스`, ctx);
+  }
+  if (reqRow.email) {
+    const html = `<div style="font-family:sans-serif;line-height:1.7;color:#1f2937;">
+<p>안녕하세요, ${escapeHtml(reqRow.name)}님.</p>
+<p>요청하신 <strong>${escapeHtml(reqRow.title)}</strong> 건이 정상 접수되었습니다.</p>
+<p>담당자가 검토 후 입력하신 연락처로 곧 연락드리겠습니다.</p>
+<p style="margin-top:12px;"><a href="${link}">진행 중인 사건 보기</a></p>
+<p style="color:#9ca3af;font-size:12px;margin-top:16px;">법무법인 윈스 · 허왕 변호사</p>
+</div>`;
+    await sendEmail(reqRow.email, "[로사이어티] 사건 요청이 접수되었습니다", html, ctx);
   }
 }
 
@@ -1733,9 +1753,11 @@ export function registerRoutes(app: Express) {
         userId: (req.user as any)?.id || null,
         ipAddress: req.ip || req.headers["x-forwarded-for"]?.toString() || null,
       }).returning();
-      // 윈스 알림은 비차단(실패해도 접수는 성공 처리)
-      notifyNewCaseRequest(created.id, { name, phone: phoneDigits, title, category: created.category, opponent: created.opponent })
-        .catch((e) => console.error("사건요청 알림 오류:", e));
+      // 알림은 비차단(실패해도 접수는 성공 처리): 관리자(윈스) 알림 + 신청자 접수확인
+      notifyNewCaseRequest(created.id, { name, phone: phoneDigits, email, title, category: created.category, opponent: created.opponent })
+        .catch((e) => console.error("사건요청 관리자 알림 오류:", e));
+      notifyCaseRequestReceived({ id: created.id, name, phone: phoneDigits, email, title })
+        .catch((e) => console.error("사건요청 접수확인 알림 오류:", e));
       res.json({ ok: true, id: created.id });
     } catch (e) {
       console.error("사건요청 접수 오류:", e);

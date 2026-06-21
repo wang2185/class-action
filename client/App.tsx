@@ -31,6 +31,7 @@ import Lawyer from "./pages/Lawyer";
 import CaseRequest from "./pages/CaseRequest";
 import Faq from "./pages/Faq";
 import Welcome from "./pages/Welcome";
+import RouteMeta from "./components/RouteMeta";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -60,6 +61,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <RouteMeta />
         <div className="min-h-screen flex flex-col">
           <Header />
           <main className="flex-1">
