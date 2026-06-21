@@ -19,7 +19,7 @@ export default function MyPayments() {
   const completed = (txs || []).filter((t) => t.status === "completed").reduce((s, t) => s + (t.amount || 0), 0);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="max-w-3xl mx-auto px-4 py-8">
       <MemberTabs />
       <h1 className="text-2xl font-extrabold text-ink mb-6">결제 내역</h1>
 

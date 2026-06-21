@@ -76,7 +76,7 @@ export default function Account() {
   const linkedBy = (key: string) => (social?.linked || []).find((l) => l.provider === key);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-3xl mx-auto px-4 py-8">
       <MemberTabs />
       <h1 className="text-2xl font-extrabold text-ink mb-1">내 정보</h1>
       <p className="text-sm text-ink-muted mb-6">기본 정보·비밀번호·간편인증 연결을 관리합니다.</p>

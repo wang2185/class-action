@@ -51,7 +51,7 @@ export default function MyCases() {
   const todoList = list.map((it) => ({ ...it, action: nextAction(it.party, it.case) })).filter((it) => it.action);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-3xl mx-auto px-4 py-8">
       <MemberTabs />
       <h1 className="text-2xl md:text-3xl font-bold mb-6">내 사건</h1>
 

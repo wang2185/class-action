@@ -20,7 +20,7 @@ export default function MyNotifications() {
   const { data: list, isLoading } = useQuery<any[]>({ queryKey: ["myNotifications"], queryFn: () => apiRequest("/api/my/notifications") });
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
+    <div className="max-w-3xl mx-auto px-4 py-8">
       <MemberTabs />
       <h1 className="text-2xl font-extrabold text-ink mb-6">알림</h1>
 
