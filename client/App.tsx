@@ -32,6 +32,11 @@ import CaseRequest from "./pages/CaseRequest";
 import Faq from "./pages/Faq";
 import Welcome from "./pages/Welcome";
 import Account from "./pages/Account";
+import MyPayments from "./pages/MyPayments";
+import MyNotifications from "./pages/MyNotifications";
+import AdminPayments from "./pages/admin/AdminPayments";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import RouteMeta from "./components/RouteMeta";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -84,6 +89,8 @@ export default function App() {
               <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
               <Route path="/my" element={<ProtectedRoute><MyCases /></ProtectedRoute>} />
               <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+              <Route path="/my/payments" element={<ProtectedRoute><MyPayments /></ProtectedRoute>} />
+              <Route path="/my/notifications" element={<ProtectedRoute><MyNotifications /></ProtectedRoute>} />
               <Route path="/cases/:id/join" element={<ProtectedRoute><JoinCase /></ProtectedRoute>} />
               <Route path="/cases/:id/contract" element={<ProtectedRoute><Contract /></ProtectedRoute>} />
               <Route path="/cases/:id/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
@@ -103,6 +110,9 @@ export default function App() {
               <Route path="/admin/cases/:id/defendants" element={<AdminRoute><AdminDefendants /></AdminRoute>} />
               <Route path="/admin/cases/:id/package" element={<LawyerRoute><CasePackage /></LawyerRoute>} />
               <Route path="/admin/case-requests" element={<AdminRoute><AdminCaseRequests /></AdminRoute>} />
+              <Route path="/admin/payments" element={<AdminRoute><AdminPayments /></AdminRoute>} />
+              <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+              <Route path="/admin/audit-logs" element={<AdminRoute><AdminAuditLogs /></AdminRoute>} />
             </Routes>
           </main>
           <Footer />

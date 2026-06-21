@@ -617,6 +617,45 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // 내 알림(인앱) — 내게 발송된 SMS/이메일 이력
+  app.get("/api/my/notifications", requireAuth, async (req, res) => {
+    try {
+      const u = req.user as any;
+      const recips = [u.email, (u.phone || "").replace(/[^0-9]/g, "")].filter((v) => v && String(v).length > 0);
+      if (!recips.length) return res.json([]);
+      const rows = await db
+        .select({ id: notifications.id, channel: notifications.channel, templateKey: notifications.templateKey, status: notifications.status, caseId: notifications.caseId, createdAt: notifications.createdAt })
+        .from(notifications)
+        .where(and(inArray(notifications.recipient, recips), eq(notifications.status, "sent")))
+        .orderBy(desc(notifications.id))
+        .limit(100);
+      return res.json(rows);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 내 결제 내역
+  app.get("/api/my/payment-transactions", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const rows = await db
+        .select({
+          id: paymentTransactions.id, amount: paymentTransactions.amount, status: paymentTransactions.status,
+          paymentType: paymentTransactions.paymentType, cardName: paymentTransactions.cardName,
+          authDate: paymentTransactions.authDate, createdAt: paymentTransactions.createdAt,
+          caseId: paymentTransactions.caseId, caseTitle: cases.title,
+        })
+        .from(paymentTransactions)
+        .leftJoin(cases, eq(paymentTransactions.caseId, cases.id))
+        .where(eq(paymentTransactions.userId, userId))
+        .orderBy(desc(paymentTransactions.createdAt));
+      return res.json(rows);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
   // ═══════════════════════════════════════════
   // 증거 업로드 API
   // ═══════════════════════════════════════════
@@ -1685,22 +1724,120 @@ export function registerRoutes(app: Express) {
   app.get("/api/admin/stats", requireAdmin, async (req, res) => {
     try {
       const [caseCount] = await db.select({ count: count() }).from(cases);
+      const [recruiting] = await db.select({ count: count() }).from(cases).where(eq(cases.status, "recruiting"));
       const [partyCount] = await db.select({ count: count() }).from(caseParties);
-      const [paidCount] = await db
-        .select({ count: count() })
-        .from(caseParties)
-        .where(eq(caseParties.paymentStatus, "completed"));
-      const [txCount] = await db
-        .select({ total: sql<number>`COALESCE(SUM(${paymentTransactions.amount}), 0)` })
-        .from(paymentTransactions)
-        .where(eq(paymentTransactions.status, "completed"));
-
+      const [paidCount] = await db.select({ count: count() }).from(caseParties).where(eq(caseParties.paymentStatus, "completed"));
+      const [pendingPay] = await db.select({ count: count() }).from(caseParties).where(eq(caseParties.paymentStatus, "pending"));
+      const [txCount] = await db.select({ total: sql<number>`COALESCE(SUM(${paymentTransactions.amount}), 0)` }).from(paymentTransactions).where(eq(paymentTransactions.status, "completed"));
+      const [newReq] = await db.select({ count: count() }).from(caseRequests).where(eq(caseRequests.status, "new"));
+      const [notifSent] = await db.select({ count: count() }).from(notifications).where(eq(notifications.status, "sent"));
+      const [userCount] = await db.select({ count: count() }).from(users);
       return res.json({
         totalCases: caseCount?.count || 0,
+        recruitingCases: recruiting?.count || 0,
         totalParties: partyCount?.count || 0,
         paidParties: paidCount?.count || 0,
+        pendingPayParties: pendingPay?.count || 0,
         totalRevenue: txCount?.total || 0,
+        newRequests: newReq?.count || 0,
+        notificationsSent: notifSent?.count || 0,
+        totalUsers: userCount?.count || 0,
       });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 당사자 일괄 상태 변경
+  app.post("/api/admin/parties/bulk-status", requireAdmin, async (req, res) => {
+    try {
+      const allowed = ["registered", "contracted", "paid", "verified"];
+      const { ids, status } = req.body || {};
+      if (!Array.isArray(ids) || !ids.length || !allowed.includes(status)) return res.status(400).json({ error: "ids·status가 필요합니다." });
+      const intIds = ids.map((n: any) => parseInt(n, 10)).filter((n: number) => Number.isInteger(n)).slice(0, 2000);
+      if (!intIds.length) return res.status(400).json({ error: "유효한 대상이 없습니다." });
+      await db.update(caseParties).set({ status }).where(inArray(caseParties.id, intIds));
+      await logAudit(req, "bulk_update_party_status", "case_parties", undefined, `${intIds.length}건 → ${status}`);
+      return res.json({ ok: true, updated: intIds.length });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 결제 거래 통합 조회 (정산)
+  app.get("/api/admin/payments", requireAdmin, async (req, res) => {
+    try {
+      const rows = await db
+        .select({
+          id: paymentTransactions.id, amount: paymentTransactions.amount, status: paymentTransactions.status,
+          paymentType: paymentTransactions.paymentType, orderId: paymentTransactions.orderId,
+          cardName: paymentTransactions.cardName, cardNum: paymentTransactions.cardNum,
+          authDate: paymentTransactions.authDate, createdAt: paymentTransactions.createdAt,
+          caseId: paymentTransactions.caseId, caseTitle: cases.title,
+        })
+        .from(paymentTransactions)
+        .leftJoin(cases, eq(paymentTransactions.caseId, cases.id))
+        .orderBy(desc(paymentTransactions.createdAt))
+        .limit(1000);
+      const [agg] = await db
+        .select({
+          completed: sql<number>`COALESCE(SUM(CASE WHEN ${paymentTransactions.status} = 'completed' THEN ${paymentTransactions.amount} ELSE 0 END), 0)`,
+          total: count(),
+        })
+        .from(paymentTransactions);
+      await logAudit(req, "view_payments", "payment_transactions");
+      return res.json({ transactions: rows, totalCompleted: agg?.completed || 0, totalCount: agg?.total || 0 });
+    } catch (err) {
+      console.error("결제 조회 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 사용자 목록
+  app.get("/api/admin/users", requireAdmin, async (req, res) => {
+    try {
+      const rows = await db
+        .select({ id: users.id, email: users.email, name: users.name, phone: users.phone, role: users.role, createdAt: users.createdAt })
+        .from(users)
+        .orderBy(desc(users.createdAt))
+        .limit(2000);
+      return res.json(rows);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 사용자 권한 변경 (member ↔ lawyer ↔ admin)
+  app.patch("/api/admin/users/:id/role", requireAdmin, async (req, res) => {
+    try {
+      const allowed = ["member", "lawyer", "admin"];
+      const id = parseInt(req.params.id, 10);
+      const { role } = req.body || {};
+      if (!Number.isInteger(id) || !allowed.includes(role)) return res.status(400).json({ error: "유효한 역할이 아닙니다." });
+      if (id === (req.user as any).id && role !== "admin") return res.status(400).json({ error: "본인 관리자 권한은 해제할 수 없습니다." });
+      const [updated] = await db.update(users).set({ role }).where(eq(users.id, id)).returning({ id: users.id, email: users.email, name: users.name, role: users.role });
+      if (!updated) return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
+      await logAudit(req, "update_user_role", "users", id, `role=${role}`);
+      return res.json(updated);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 감사 로그 조회 (PII 접근 이력)
+  app.get("/api/admin/audit-logs", requireAdmin, async (req, res) => {
+    try {
+      const rows = await db
+        .select({
+          id: auditLogs.id, action: auditLogs.action, tableName: auditLogs.tableName, recordId: auditLogs.recordId,
+          details: auditLogs.details, ipAddress: auditLogs.ipAddress, createdAt: auditLogs.createdAt,
+          userId: auditLogs.userId, userEmail: users.email, userName: users.name,
+        })
+        .from(auditLogs)
+        .leftJoin(users, eq(auditLogs.userId, users.id))
+        .orderBy(desc(auditLogs.id))
+        .limit(1000);
+      return res.json(rows);
     } catch (err) {
       return res.status(500).json({ error: "서버 오류" });
     }
