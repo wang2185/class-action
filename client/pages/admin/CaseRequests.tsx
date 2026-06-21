@@ -115,7 +115,7 @@ export default function CaseRequests() {
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <AdminNav />
       <h1 className="text-2xl md:text-3xl font-bold mb-1">사건 요청</h1>
       <p className="text-gray-500 text-sm mb-6">고객이 제출한 새 사건 제보입니다. 검토 후 상태를 변경하세요.</p>

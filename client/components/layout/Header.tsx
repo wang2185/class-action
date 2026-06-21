@@ -28,7 +28,7 @@ export default function Header() {
           <Link to="/cases" className="text-gray-700 hover:text-primary-500 transition-colors whitespace-nowrap">사건 참여</Link>
           <Link to="/faq" className="text-gray-700 hover:text-primary-500 transition-colors whitespace-nowrap">자주 묻는 질문</Link>
           {user && <Link to="/my" className="text-gray-700 hover:text-primary-500 transition-colors whitespace-nowrap">내 사건</Link>}
-          {isAdmin && <Link to="/admin" className="text-accent-500 hover:text-accent-600 font-semibold transition-colors">사건관리</Link>}
+          {isAdmin && <Link to="/admin" className="text-accent-500 hover:text-accent-600 font-semibold transition-colors">업무관리</Link>}
           {isOwner && <Link to="/owner" className="text-purple-600 hover:text-purple-700 font-semibold transition-colors">관리자</Link>}
         </nav>
 
@@ -67,7 +67,7 @@ export default function Header() {
           <Link to="/faq" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>자주 묻는 질문</Link>
           {user && <Link to="/my" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>내 사건</Link>}
           {user && <Link to="/account" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>내 정보</Link>}
-          {isAdmin && <Link to="/admin" className="block py-2 text-sm text-accent-500" onClick={() => setMenuOpen(false)}>사건관리</Link>}
+          {isAdmin && <Link to="/admin" className="block py-2 text-sm text-accent-500" onClick={() => setMenuOpen(false)}>업무관리</Link>}
           {isOwner && <Link to="/owner" className="block py-2 text-sm text-purple-600" onClick={() => setMenuOpen(false)}>관리자</Link>}
           <div className="pt-2 border-t flex gap-2">
             {user ? (

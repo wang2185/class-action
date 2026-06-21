@@ -27,7 +27,7 @@ export default function AdminAuditLogs() {
   }, [logs, q, action]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <AdminNav />
       <h1 className="text-2xl md:text-3xl font-bold mb-6">감사 로그</h1>
       <div className="card">

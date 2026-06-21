@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/use-auth";
 
 const BASE = [
-  { to: "/admin", label: "사건관리" },
+  { to: "/admin", label: "업무관리" },
   { to: "/admin/case-requests", label: "사건요청" },
   { to: "/admin/payments", label: "결제" },
   { to: "/admin/users", label: "사용자" },

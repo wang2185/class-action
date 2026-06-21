@@ -34,7 +34,7 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       <AdminNav />
       <h1 className="text-2xl md:text-3xl font-bold mb-6">사용자 · 권한</h1>
 

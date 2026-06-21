@@ -24,7 +24,7 @@ export default function Owner() {
     { label: "회원", value: sumv(us), sub: `사건요청 ${sumv(rs)}건`, color: "text-purple-600" },
   ];
   const links = [
-    { to: "/admin", title: "사건관리", desc: "사건·당사자·경과 관리" },
+    { to: "/admin", title: "업무관리", desc: "사건·당사자·경과 관리" },
     { to: "/admin/payments", title: "결제 관리", desc: "거래·정산" },
     { to: "/admin/users", title: "사용자·권한", desc: "역할 부여(오너)" },
     { to: "/admin/audit-logs", title: "감사 로그", desc: "개인정보 접근 이력" },
@@ -39,7 +39,7 @@ export default function Owner() {
           <h1 className="text-2xl md:text-3xl font-bold">관리자 콘솔</h1>
           <p className="text-sm text-gray-500 mt-1">법무법인 윈스 · 경영 현황과 최상위 관리(오너)</p>
         </div>
-        <Link to="/admin" className="btn-secondary">사건관리</Link>
+        <Link to="/admin" className="btn-secondary">업무관리</Link>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

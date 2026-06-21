@@ -55,7 +55,7 @@ export default function AdminDashboard() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <AdminNav />
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <h1 className="text-2xl md:text-3xl font-bold">사건관리</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">업무관리</h1>
         <Link to="/admin/cases/new" className="btn-primary">새 사건 등록</Link>
       </div>
 
