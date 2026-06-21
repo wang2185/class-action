@@ -31,6 +31,7 @@ import Lawyer from "./pages/Lawyer";
 import CaseRequest from "./pages/CaseRequest";
 import Faq from "./pages/Faq";
 import Welcome from "./pages/Welcome";
+import Account from "./pages/Account";
 import RouteMeta from "./components/RouteMeta";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -82,6 +83,7 @@ export default function App() {
               {/* 로그인 필수 */}
               <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
               <Route path="/my" element={<ProtectedRoute><MyCases /></ProtectedRoute>} />
+              <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
               <Route path="/cases/:id/join" element={<ProtectedRoute><JoinCase /></ProtectedRoute>} />
               <Route path="/cases/:id/contract" element={<ProtectedRoute><Contract /></ProtectedRoute>} />
               <Route path="/cases/:id/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />

@@ -9,7 +9,7 @@ import {
   billingKeys, defendants, defendantDocuments, consents, auditLogs, paymentLinks, notifications, caseRequests,
 } from "../shared/schema";
 import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
-import { requireAuth, requireAdmin, requireLawyer, hashPassword, loginWithSessionRegeneration } from "./auth";
+import { requireAuth, requireAdmin, requireLawyer, hashPassword, comparePassword, loginWithSessionRegeneration } from "./auth";
 import { encryptPII, decryptPII } from "./crypto";
 import { upload, deleteFile } from "./storage";
 import { assembleDossier, buildPackageZip } from "./casePackage";
@@ -282,6 +282,45 @@ export function registerRoutes(app: Express) {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "인증되지 않음" });
     const { password: _, ...safeUser } = req.user as any;
     return res.json(safeUser);
+  });
+
+  // 내 정보(이름·연락처) 변경
+  app.patch("/api/auth/profile", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const patch: any = {};
+      if (typeof req.body?.name === "string" && req.body.name.trim()) patch.name = req.body.name.trim().slice(0, 100);
+      if (typeof req.body?.phone === "string") patch.phone = req.body.phone.trim().slice(0, 30) || null;
+      if (!Object.keys(patch).length) return res.status(400).json({ error: "변경할 내용이 없습니다." });
+      const [updated] = await db.update(users).set(patch).where(eq(users.id, userId)).returning();
+      if (!updated) return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
+      const { password: _, ...safe } = updated;
+      return res.json(safe);
+    } catch (err) {
+      console.error("내 정보 변경 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 비밀번호 변경(현재 비밀번호 확인 후)
+  app.post("/api/auth/change-password", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { currentPassword, newPassword } = req.body || {};
+      if (!currentPassword || !newPassword) return res.status(400).json({ error: "현재 비밀번호와 새 비밀번호를 입력해주세요." });
+      if (String(newPassword).length < 8) return res.status(400).json({ error: "새 비밀번호는 8자 이상이어야 합니다." });
+      const [u] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!u) return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
+      if (!u.password) return res.status(400).json({ error: "소셜 로그인 계정은 비밀번호가 없습니다." });
+      const ok = await comparePassword(String(currentPassword), u.password);
+      if (!ok) return res.status(401).json({ error: "현재 비밀번호가 일치하지 않습니다." });
+      await db.update(users).set({ password: await hashPassword(String(newPassword)) }).where(eq(users.id, userId));
+      await logAudit(req, "change_password", "users", userId);
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("비밀번호 변경 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
   });
 
   // ═══════════════════════════════════════════

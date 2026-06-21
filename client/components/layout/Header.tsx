@@ -13,9 +13,9 @@ export default function Header() {
           <img
             src="/brand/logo-header.png"
             alt="로사이어티 집단소송 · 법무법인 윈스"
-            width={1168}
+            width={1467}
             height={200}
-            className="h-10 w-auto"
+            className="h-8 w-auto"
             decoding="async"
           />
         </Link>
@@ -34,7 +34,7 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <>
-              <span className="text-sm text-gray-600">{user.name}님</span>
+              <Link to="/account" className="text-sm text-gray-600 hover:text-primary-600 transition-colors">{user.name}님</Link>
               <button onClick={logout} className="btn-secondary text-xs px-3 py-1.5">로그아웃</button>
             </>
           ) : (
@@ -65,6 +65,7 @@ export default function Header() {
           <Link to="/cases" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>사건 참여</Link>
           <Link to="/faq" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>자주 묻는 질문</Link>
           {user && <Link to="/my" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>내 사건</Link>}
+          {user && <Link to="/account" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>내 정보</Link>}
           {isAdmin && <Link to="/admin" className="block py-2 text-sm text-accent-500" onClick={() => setMenuOpen(false)}>관리자</Link>}
           <div className="pt-2 border-t flex gap-2">
             {user ? (
