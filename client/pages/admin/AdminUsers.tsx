@@ -4,12 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "../../lib/queryClient";
 import { useAuth } from "../../hooks/use-auth";
 
-const ROLES = [{ v: "member", l: "회원" }, { v: "lawyer", l: "변호사" }, { v: "admin", l: "관리자" }];
-const ROLE_CLS: Record<string, string> = { admin: "bg-accent-100 text-accent-700", lawyer: "bg-purple-100 text-purple-700", member: "bg-gray-100 text-gray-600" };
+const ROLES = [{ v: "member", l: "회원" }, { v: "lawyer", l: "변호사" }, { v: "admin", l: "관리자" }, { v: "owner", l: "오너" }];
+const ROLE_CLS: Record<string, string> = { owner: "bg-rose-100 text-rose-700", admin: "bg-accent-100 text-accent-700", lawyer: "bg-purple-100 text-purple-700", member: "bg-gray-100 text-gray-600" };
 const fmt = (d?: string) => (d ? new Date(d).toLocaleDateString("ko-KR") : "-");
 
 export default function AdminUsers() {
-  const { user: me } = useAuth();
+  const { user: me, isOwner } = useAuth();
   const { data: users, isLoading } = useQuery({ queryKey: ["adminUsers"], queryFn: () => apiRequest("/api/admin/users") });
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
@@ -74,8 +74,8 @@ export default function AdminUsers() {
                     <td className="py-3 text-gray-400">{fmt(u.createdAt)}</td>
                     <td className="py-3 text-center"><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_CLS[u.role] || "bg-gray-100 text-gray-600"}`}>{ROLES.find((r) => r.v === u.role)?.l || u.role}</span></td>
                     <td className="py-3 text-center">
-                      <select disabled={busy === u.id} value={u.role} onChange={(e) => changeRole(u.id, e.target.value)}
-                        className="rounded-lg border border-gray-300 px-2 py-1 text-sm disabled:opacity-50">
+                      <select disabled={busy === u.id || !isOwner} value={u.role} onChange={(e) => changeRole(u.id, e.target.value)}
+                        className="rounded-lg border border-gray-300 px-2 py-1 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                         {ROLES.map((r) => <option key={r.v} value={r.v}>{r.l}</option>)}
                       </select>
                     </td>
@@ -86,7 +86,7 @@ export default function AdminUsers() {
           </div>
         )}
       </div>
-      <p className="text-xs text-gray-400 mt-3">변호사·관리자 권한은 사건·당사자·결제 등 민감 데이터에 접근할 수 있습니다. 신뢰할 수 있는 직원에게만 부여하세요.</p>
+      <p className="text-xs text-gray-400 mt-3">{isOwner ? "변호사·관리자·오너 권한은 사건·당사자·결제 등 민감 데이터에 접근합니다. 신뢰할 수 있는 직원에게만 부여하세요." : "권한 변경은 오너만 가능합니다."}</p>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { useAuth } from "../../hooks/use-auth";
 import { useState } from "react";
 
 export default function Header() {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, isOwner, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -29,6 +29,7 @@ export default function Header() {
           <Link to="/faq" className="text-gray-700 hover:text-primary-500 transition-colors whitespace-nowrap">자주 묻는 질문</Link>
           {user && <Link to="/my" className="text-gray-700 hover:text-primary-500 transition-colors whitespace-nowrap">내 사건</Link>}
           {isAdmin && <Link to="/admin" className="text-accent-500 hover:text-accent-600 font-semibold transition-colors">관리자</Link>}
+          {isOwner && <Link to="/owner" className="text-purple-600 hover:text-purple-700 font-semibold transition-colors">오너</Link>}
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
@@ -67,6 +68,7 @@ export default function Header() {
           {user && <Link to="/my" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>내 사건</Link>}
           {user && <Link to="/account" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>내 정보</Link>}
           {isAdmin && <Link to="/admin" className="block py-2 text-sm text-accent-500" onClick={() => setMenuOpen(false)}>관리자</Link>}
+          {isOwner && <Link to="/owner" className="block py-2 text-sm text-purple-600" onClick={() => setMenuOpen(false)}>오너</Link>}
           <div className="pt-2 border-t flex gap-2">
             {user ? (
               <button onClick={() => { logout(); setMenuOpen(false); }} className="btn-secondary text-xs w-full">로그아웃</button>

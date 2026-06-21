@@ -9,7 +9,7 @@ import {
   billingKeys, defendants, defendantDocuments, consents, auditLogs, paymentLinks, notifications, caseRequests,
 } from "../shared/schema";
 import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
-import { requireAuth, requireAdmin, requireLawyer, hashPassword, comparePassword, loginWithSessionRegeneration } from "./auth";
+import { requireAuth, requireAdmin, requireLawyer, requireOwner, hashPassword, comparePassword, loginWithSessionRegeneration } from "./auth";
 import { encryptPII, decryptPII } from "./crypto";
 import { upload, deleteFile } from "./storage";
 import { assembleDossier, buildPackageZip } from "./casePackage";
@@ -1822,14 +1822,14 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // 사용자 권한 변경 (member ↔ lawyer ↔ admin)
-  app.patch("/api/admin/users/:id/role", requireAdmin, async (req, res) => {
+  // 사용자 권한 변경 (owner 전용) — member ↔ lawyer ↔ admin ↔ owner
+  app.patch("/api/admin/users/:id/role", requireOwner, async (req, res) => {
     try {
-      const allowed = ["member", "lawyer", "admin"];
+      const allowed = ["member", "lawyer", "admin", "owner"];
       const id = parseInt(req.params.id, 10);
       const { role } = req.body || {};
       if (!Number.isInteger(id) || !allowed.includes(role)) return res.status(400).json({ error: "유효한 역할이 아닙니다." });
-      if (id === (req.user as any).id && role !== "admin") return res.status(400).json({ error: "본인 관리자 권한은 해제할 수 없습니다." });
+      if (id === (req.user as any).id && role !== "owner") return res.status(400).json({ error: "본인 오너 권한은 해제할 수 없습니다." });
       const [updated] = await db.update(users).set({ role }).where(eq(users.id, id)).returning({ id: users.id, email: users.email, name: users.name, role: users.role });
       if (!updated) return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
       await logAudit(req, "update_user_role", "users", id, `role=${role}`);
@@ -1854,6 +1854,30 @@ export function registerRoutes(app: Express) {
         .limit(1000);
       return res.json(rows);
     } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // ── 오너 경영 콘솔 ──
+  app.get("/api/owner/overview", requireOwner, async (req, res) => {
+    try {
+      const [rev] = await db.select({ total: sql<number>`COALESCE(SUM(${paymentTransactions.amount}), 0)`, cnt: count() }).from(paymentTransactions).where(eq(paymentTransactions.status, "completed"));
+      const casesByStatus = await db.select({ status: cases.status, c: count() }).from(cases).groupBy(cases.status);
+      const usersByRole = await db.select({ role: users.role, c: count() }).from(users).groupBy(users.role);
+      const requestsByStatus = await db.select({ status: caseRequests.status, c: count() }).from(caseRequests).groupBy(caseRequests.status);
+      const [pTotal] = await db.select({ c: count() }).from(caseParties);
+      const [pPaid] = await db.select({ c: count() }).from(caseParties).where(eq(caseParties.paymentStatus, "completed"));
+      const recentPayments = await db
+        .select({ id: paymentTransactions.id, amount: paymentTransactions.amount, caseTitle: cases.title, createdAt: paymentTransactions.createdAt })
+        .from(paymentTransactions).leftJoin(cases, eq(paymentTransactions.caseId, cases.id))
+        .where(eq(paymentTransactions.status, "completed")).orderBy(desc(paymentTransactions.createdAt)).limit(5);
+      return res.json({
+        revenue: { total: rev?.total || 0, count: rev?.cnt || 0 },
+        parties: { total: pTotal?.c || 0, paid: pPaid?.c || 0 },
+        casesByStatus, usersByRole, requestsByStatus, recentPayments,
+      });
+    } catch (err) {
+      console.error("오너 오버뷰 오류:", err);
       return res.status(500).json({ error: "서버 오류" });
     }
   });

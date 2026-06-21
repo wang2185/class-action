@@ -112,26 +112,37 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Middleware: 관리자 필수 (lawyer 는 관리자 권한 전부 보유)
+// Middleware: 관리자 필수 (lawyer·owner 는 관리자 권한 전부 보유)
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "로그인이 필요합니다." });
   }
   const role = (req.user as any).role;
-  if (role !== "admin" && role !== "lawyer") {
+  if (role !== "admin" && role !== "lawyer" && role !== "owner") {
     return res.status(403).json({ error: "관리자 권한이 필요합니다." });
   }
   next();
 }
 
-// Middleware: 변호사 필수 (전환기 — admin 도 허용. 비변호사 직원 계정 도입 시 lawyer 전용으로 좁힐 것)
+// Middleware: 변호사 필수 (전환기 — admin·owner 도 허용)
 export function requireLawyer(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "로그인이 필요합니다." });
   }
   const role = (req.user as any).role;
-  if (role !== "lawyer" && role !== "admin") {
+  if (role !== "lawyer" && role !== "admin" && role !== "owner") {
     return res.status(403).json({ error: "변호사 권한이 필요합니다." });
+  }
+  next();
+}
+
+// Middleware: 오너(최고관리자) 필수 — 권한 부여·경영 콘솔 등 최상위 작업
+export function requireOwner(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "로그인이 필요합니다." });
+  }
+  if ((req.user as any).role !== "owner") {
+    return res.status(403).json({ error: "오너 권한이 필요합니다." });
   }
   next();
 }

@@ -15,6 +15,7 @@ type AuthContext = {
   isLoading: boolean;
   isAdmin: boolean;
   isLawyer: boolean;
+  isOwner: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: { email: string; password: string; name: string; phone?: string }) => Promise<void>;
   logout: () => Promise<void>;
@@ -51,9 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user: user || null,
         isLoading,
-        isAdmin: user?.role === "admin",
-        // 전환기: lawyer 전용 기능(서면 패키지)에 admin 도 접근 허용
-        isLawyer: user?.role === "lawyer" || user?.role === "admin",
+        isAdmin: user?.role === "admin" || user?.role === "owner",
+        // owner·admin 은 변호사 전용 기능(서면 패키지)도 접근
+        isLawyer: user?.role === "lawyer" || user?.role === "admin" || user?.role === "owner",
+        isOwner: user?.role === "owner",
         login: async (email, password) => { await loginMutation.mutateAsync({ email, password }); },
         register: async (data) => { await registerMutation.mutateAsync(data); },
         logout: async () => { await logoutMutation.mutateAsync(); },

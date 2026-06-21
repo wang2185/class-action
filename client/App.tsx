@@ -38,6 +38,7 @@ import MyNotifications from "./pages/MyNotifications";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
+import Owner from "./pages/admin/Owner";
 import RouteMeta from "./components/RouteMeta";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -61,6 +62,14 @@ function LawyerRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) return <div className="flex items-center justify-center min-h-screen">로딩 중…</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (!isLawyer) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+function OwnerRoute({ children }: { children: React.ReactNode }) {
+  const { user, isOwner, isLoading } = useAuth();
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen">로딩 중…</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isOwner) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -104,6 +113,7 @@ export default function App() {
               <Route path="/payment/fail" element={<PaymentResult type="fail" />} />
 
               {/* 관리자 */}
+              <Route path="/owner" element={<OwnerRoute><Owner /></OwnerRoute>} />
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
               <Route path="/admin/cases/new" element={<AdminRoute><AdminCaseForm /></AdminRoute>} />
               <Route path="/admin/cases/:id/edit" element={<AdminRoute><AdminCaseForm /></AdminRoute>} />
