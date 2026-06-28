@@ -36,6 +36,8 @@ import MyPayments from "./pages/MyPayments";
 import MyPaymentMethods from "./pages/MyPaymentMethods";
 import MyNotifications from "./pages/MyNotifications";
 import AdminPayments from "./pages/admin/AdminPayments";
+import AdminAccounting from "./pages/admin/AdminAccounting";
+import AdminCoupons from "./pages/admin/AdminCoupons";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
 import Owner from "./pages/admin/Owner";
@@ -123,6 +125,8 @@ export default function App() {
               <Route path="/admin/cases/:id/package" element={<LawyerRoute><CasePackage /></LawyerRoute>} />
               <Route path="/admin/case-requests" element={<AdminRoute><AdminCaseRequests /></AdminRoute>} />
               <Route path="/admin/payments" element={<AdminRoute><AdminPayments /></AdminRoute>} />
+              <Route path="/admin/accounting" element={<AdminRoute><AdminAccounting /></AdminRoute>} />
+              <Route path="/admin/coupons" element={<AdminRoute><AdminCoupons /></AdminRoute>} />
               <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
               <Route path="/admin/audit-logs" element={<AdminRoute><AdminAuditLogs /></AdminRoute>} />
             </Routes>

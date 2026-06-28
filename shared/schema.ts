@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   name: varchar("name", { length: 100 }).notNull(),
   phone: varchar("phone", { length: 20 }),
   role: varchar("role", { length: 20 }).notNull().default("member"), // member, admin
+  deletedAt: timestamp("deleted_at"), // 소프트 삭제 — null=활성, 값 있으면 탈퇴(목록·인증 제외)
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -167,6 +168,8 @@ export const paymentLinks = pgTable("payment_links", {
   usedAt: timestamp("used_at"),
   lastSessionOrderId: varchar("last_session_order_id", { length: 100 }), // 최근 결제세션 orderId
   openCount: integer("open_count").notNull().default(0), // 열람 횟수(남용 신호)
+  couponId: integer("coupon_id"), // 적용 쿠폰(있으면) — FK 생략(소프트 참조)
+  discountAmount: integer("discount_amount").notNull().default(0), // 쿠폰으로 할인된 금액(원)
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -329,6 +332,36 @@ export const caseRequests = pgTable("case_requests", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── 수동 장부 (회계 LEVEL 2 — 관리자 수기 수입/지출) ───
+export const revenueEntries = pgTable("revenue_entries", {
+  id: serial("id").primaryKey(),
+  entryDate: timestamp("entry_date").notNull(), // 거래 발생일(정산 기준)
+  direction: varchar("direction", { length: 10 }).notNull(), // income(수입) | expense(지출)
+  category: varchar("category", { length: 50 }), // 착수금·성공보수·공동경비·환불 등 자유분류
+  amount: integer("amount").notNull(), // 금액(원, 양수)
+  memo: text("memo"),
+  source: varchar("source", { length: 50 }).notNull().default("manual"), // manual(수기) 등 출처
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  dateIdx: index("revenue_entries_date_idx").on(t.entryDate),
+}));
+
+// ─── 쿠폰 (착수금 할인코드) ───
+export const coupons = pgTable("coupons", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 60 }).notNull().unique(), // 할인코드(대문자 정규화)
+  caseId: integer("case_id").references(() => cases.id), // null=전체 사건 적용
+  discountType: varchar("discount_type", { length: 10 }).notNull(), // fixed(정액 원) | percent(정률 %)
+  discountValue: integer("discount_value").notNull(), // fixed=원, percent=0~100
+  maxUses: integer("max_uses").notNull().default(0), // 0=무제한
+  usedCount: integer("used_count").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  expiresAt: timestamp("expires_at"), // null=무기한
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── 세션 (express-session) ───
 export const sessions = pgTable("session", {
   sid: varchar("sid").primaryKey(),
@@ -398,3 +431,7 @@ export type PaymentLink = typeof paymentLinks.$inferSelect;
 export type CaseRequest = typeof caseRequests.$inferSelect;
 export type InsertCaseRequest = typeof caseRequests.$inferInsert;
 export type SocialAccount = typeof socialAccounts.$inferSelect;
+export type RevenueEntry = typeof revenueEntries.$inferSelect;
+export type InsertRevenueEntry = typeof revenueEntries.$inferInsert;
+export type Coupon = typeof coupons.$inferSelect;
+export type InsertCoupon = typeof coupons.$inferInsert;

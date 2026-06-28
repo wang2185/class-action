@@ -38,12 +38,26 @@ export default function AdminParties() {
     onError: (e: any) => setMsg(e.message || "일괄 변경 실패"),
   });
 
+  const [couponCode, setCouponCode] = useState("");
+
   const linkMutation = useMutation({
     mutationFn: (partyId: number) =>
-      apiRequest(`/api/admin/cases/${id}/payment-links`, { method: "POST", body: JSON.stringify({ casePartyIds: [partyId], send: true }) }),
-    onSuccess: (data: any) => { const l = data.links?.[0]; setMsg(l ? `${l.name} 결제링크 ${l.sendStatus === "sent" ? "발송 완료" : `발송: ${l.sendStatus}`} — ${l.url}` : "결제링크 생성됨"); },
+      apiRequest(`/api/admin/cases/${id}/payment-links`, { method: "POST", body: JSON.stringify({ casePartyIds: [partyId], send: true, couponCode: couponCode.trim() || undefined }) }),
+    onSuccess: (data: any) => { const l = data.links?.[0]; const disc = l?.discountAmount ? ` (할인 ${l.discountAmount.toLocaleString()}원)` : ""; setMsg(l ? `${l.name} 결제링크 ${l.sendStatus === "sent" ? "발송 완료" : `발송: ${l.sendStatus}`}${disc} — ${l.url}` : "결제링크 생성됨"); },
     onError: (e: any) => setMsg(e.message || "결제링크 발송 실패"),
   });
+
+  const compMutation = useMutation({
+    mutationFn: ({ partyId, reason }: { partyId: number; reason: string }) =>
+      apiRequest(`/api/admin/parties/${partyId}/comp`, { method: "POST", body: JSON.stringify({ reason }) }),
+    onSuccess: () => { setMsg("직권 완료처리(착수금 면제)했습니다."); queryClient.invalidateQueries({ queryKey: ["adminParties", id] }); },
+    onError: (e: any) => setMsg(e.message || "직권 완료처리 실패"),
+  });
+  function confirmComp(p: any) {
+    if (p.paymentStatus === "completed") { setMsg(`${p.name} 님은 이미 결제완료 상태입니다.`); return; }
+    const reason = window.prompt(`'${p.name}' 당사자의 착수금을 직권으로 면제·완료 처리합니다.\n실제 결제 없이 결제완료로 기록됩니다. 사유를 입력하세요:`, "");
+    if (reason && reason.trim()) compMutation.mutate({ partyId: p.id, reason: reason.trim() });
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (partyId: number) => apiRequest(`/api/admin/parties/${partyId}`, { method: "DELETE" }),
@@ -117,8 +131,13 @@ export default function AdminParties() {
               {Object.entries(PAY_STATUS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </div>
-          <button onClick={exportCsv} disabled={!filtered.length} className="btn-secondary text-sm disabled:opacity-50">CSV 내보내기</button>
+          <div className="flex items-center gap-2">
+            <input value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="쿠폰코드(선택)"
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm w-32 uppercase focus:outline-none focus:ring-2 focus:ring-primary-500" aria-label="결제링크 쿠폰코드" />
+            <button onClick={exportCsv} disabled={!filtered.length} className="btn-secondary text-sm disabled:opacity-50">CSV 내보내기</button>
+          </div>
         </div>
+        {couponCode.trim() && <p className="text-xs text-accent-600 mb-3">결제링크 발송 시 쿠폰 <span className="font-mono font-medium">{couponCode.trim()}</span>이(가) 착수금에 적용됩니다.</p>}
 
         {selected.size > 0 && (
           <div className="flex items-center gap-2 mb-3 p-2.5 rounded-lg bg-primary-50 text-sm flex-wrap">
@@ -169,6 +188,7 @@ export default function AdminParties() {
                           {Object.entries(PARTY_STATUS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select>
                         <button onClick={() => linkMutation.mutate(p.id)} disabled={linkMutation.isPending} className="text-xs text-accent-600 hover:underline disabled:opacity-50">결제링크 발송</button>
+                        <button onClick={() => confirmComp(p)} disabled={compMutation.isPending || p.paymentStatus === "completed"} className="text-xs text-emerald-700 hover:underline disabled:opacity-40 disabled:no-underline" title="실제 결제 없이 착수금을 면제하고 결제완료로 처리">직권 완료처리(착수금 면제)</button>
                         <button onClick={() => confirmDelete(p)} disabled={deleteMutation.isPending} className="text-xs text-red-600 hover:underline disabled:opacity-50">삭제</button>
                       </div>
                     </td>

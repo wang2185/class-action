@@ -3,7 +3,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
 import { users } from "../shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import type { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
@@ -49,7 +49,7 @@ export function setupAuth(app: Express) {
           const [user] = await db
             .select()
             .from(users)
-            .where(eq(users.email, email.toLowerCase().trim()))
+            .where(and(eq(users.email, email.toLowerCase().trim()), isNull(users.deletedAt)))
             .limit(1);
 
           if (!user || !user.password) {
@@ -79,8 +79,10 @@ export function setupAuth(app: Express) {
 
   passport.deserializeUser(async (id: number, done) => {
     try {
-      const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
-      done(null, user || null);
+      const [user] = await db.select().from(users)
+        .where(and(eq(users.id, id), isNull(users.deletedAt))).limit(1);
+      done(null, user || null); // 소프트 삭제된 계정은 세션 무효화
+
     } catch (err) {
       done(err);
     }

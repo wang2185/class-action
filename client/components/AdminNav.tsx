@@ -5,6 +5,8 @@ const BASE = [
   { to: "/admin", label: "업무관리" },
   { to: "/admin/case-requests", label: "사건요청" },
   { to: "/admin/payments", label: "결제" },
+  { to: "/admin/accounting", label: "회계" },
+  { to: "/admin/coupons", label: "쿠폰" },
   { to: "/admin/users", label: "사용자" },
   { to: "/admin/audit-logs", label: "감사로그" },
 ];

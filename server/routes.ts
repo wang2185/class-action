@@ -7,8 +7,10 @@ import {
   users, cases, caseParties, evidence, caseUpdates,
   paymentOrders, provisionalSeizures, paymentSessions, paymentTransactions,
   billingKeys, defendants, defendantDocuments, consents, auditLogs, paymentLinks, notifications, caseRequests,
+  revenueEntries, coupons,
 } from "../shared/schema";
-import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
+import { eq, desc, and, sql, count, inArray, gte, lte, isNull } from "drizzle-orm";
+import ExcelJS from "exceljs";
 import { requireAuth, requireAdmin, requireLawyer, requireOwner, hashPassword, comparePassword, loginWithSessionRegeneration } from "./auth";
 import { encryptPII, decryptPII } from "./crypto";
 import { upload, deleteFile } from "./storage";
@@ -181,6 +183,66 @@ async function notifyCaseRequester(reqRow: any, status: string) {
   }
 }
 
+// 운영자(허왕)에게 이벤트 알림 발송 — ADMIN_ALERT_PHONE(SMS)+ADMIN_ALERT_EMAIL(메일).
+// notifyNewCaseRequest 와 동일 패턴. 멱등(dedupeKey). 당사자 로깅 불필요 → 직접 발송.
+// ⚠ residentNumber 등 민감정보는 lines 에 절대 포함하지 말 것.
+async function notifyAdminEvent(opts: {
+  templateKey: string;
+  dedupeKey: string;
+  smsTitle: string;
+  subject: string;
+  lines: Array<[string, string | null | undefined]>;
+}) {
+  const adminUrl = `${PUBLIC_BASE}/admin`;
+  const ctx = { templateKey: opts.templateKey, dedupeKey: opts.dedupeKey };
+  const adminPhone = process.env.ADMIN_ALERT_PHONE;
+  const adminEmail = process.env.ADMIN_ALERT_EMAIL;
+  const smsBody = opts.lines.map(([k, v]) => `${k}: ${oneLine(v ?? "-")}`).join("\n");
+  const rows = opts.lines
+    .map(([k, v]) => `<p>${escapeHtml(k)}: ${escapeHtml(v ?? "-")}</p>`)
+    .join("\n");
+  const html = `<div style="font-family:sans-serif;line-height:1.7;color:#1f2937;">
+<p style="font-weight:700;">${escapeHtml(opts.subject)}</p>
+${rows}
+<p style="margin-top:12px;"><a href="${adminUrl}">관리자에서 확인하기</a></p>
+</div>`;
+  // 두 채널 독립 발송 — 한쪽 예외가 다른쪽을 막지 않도록 allSettled.
+  await Promise.allSettled([
+    adminPhone ? sendSMS(adminPhone, `[로사이어티] ${opts.smsTitle}\n${smsBody}\n확인: ${adminUrl}`, ctx) : Promise.resolve(),
+    adminEmail ? sendEmail(adminEmail, `[로사이어티] ${oneLine(opts.subject)}`, html, ctx) : Promise.resolve(),
+  ]);
+}
+
+// 결제 완료 → 운영자 알림용 컨텍스트 해소(사건명·결제자명·금액). session=completePayment 반환값.
+async function notifyAdminPayment(
+  session: { caseId: number; casePartyId: number | null; userId: number; amount: number },
+  orderId: string,
+) {
+  // 결제자명 해소: 당사자 레코드 우선, 없으면(일반결제) 가입 사용자.
+  let payerName: string | null = null;
+  if (session.casePartyId) {
+    const [p] = await db.select().from(caseParties).where(eq(caseParties.id, session.casePartyId)).limit(1);
+    if (p) payerName = p.name;
+  }
+  if (!payerName) {
+    const [u] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
+    if (u) payerName = u.name;
+  }
+  const [caseData] = await db.select().from(cases).where(eq(cases.id, session.caseId)).limit(1);
+  const amountStr = Number(session.amount || 0).toLocaleString("ko-KR");
+  await notifyAdminEvent({
+    templateKey: "admin_payment",
+    dedupeKey: `admin_paid:${orderId}`,
+    smsTitle: "결제 완료",
+    subject: "결제 완료",
+    lines: [
+      ["사건", caseData?.title || "단체소송"],
+      ["결제자", payerName || "-"],
+      ["금액", `${amountStr}원`],
+    ],
+  });
+}
+
 // 감사 로그 기록 헬퍼
 async function logAudit(req: Request, action: string, tableName?: string, recordId?: number, details?: string) {
   try {
@@ -200,6 +262,117 @@ function stripPII(obj: any): any {
   if (!obj) return obj;
   const { residentNumber, signatureImage, password, ...safe } = obj;
   return safe;
+}
+
+// 라우트 :id 파라미터 → 정수(없거나 비정수면 NaN). (req.params.id 는 string|string[] 타입)
+function pid(req: Request): number {
+  return parseInt(String(req.params.id), 10);
+}
+
+// ── 회계 헬퍼 ──
+// from/to 쿼리(YYYY-MM-DD) → Date 범위. to 는 그날 끝(23:59:59.999)까지 포함.
+function accountingRange(req: Request): { from: Date | null; to: Date | null } {
+  const parse = (s: any, end = false): Date | null => {
+    if (!s) return null;
+    const d = new Date(String(s));
+    if (isNaN(d.getTime())) return null;
+    // YYYY-MM-DD 는 UTC 자정으로 파싱됨 → 로컬 하루 경계로 정규화(from=00:00:00, to=23:59:59.999)
+    if (end) d.setHours(23, 59, 59, 999);
+    else d.setHours(0, 0, 0, 0);
+    return d;
+  };
+  return { from: parse(req.query.from), to: parse(req.query.to, true) };
+}
+// 수동장부(entryDate) 필터 조건
+function accountingDateConds(req: Request) {
+  const { from, to } = accountingRange(req);
+  const conds: any[] = [];
+  if (from) conds.push(gte(revenueEntries.entryDate, from));
+  if (to) conds.push(lte(revenueEntries.entryDate, to));
+  return conds;
+}
+
+type MonthRow = {
+  month: string; retainer: number; other: number; comp: number; refund: number;
+  ledgerIncome: number; ledgerExpense: number; net: number;
+};
+
+// 월별 정산 집계: 완료 거래(착수금 retainer vs 성공보수·기타) + 직권면제(COMP) 분리 + 환불 + 수동장부 net
+async function computeAccountingSummary(req: Request): Promise<{ months: MonthRow[]; totals: MonthRow; range: { from: string | null; to: string | null } }> {
+  const { from, to } = accountingRange(req);
+
+  // 완료 거래: 월·구분별 합계. resultCode='COMP'(직권면제)는 별도 분리(실수금 아님).
+  const txConds = [eq(paymentTransactions.status, "completed")];
+  if (from) txConds.push(gte(paymentTransactions.createdAt, from));
+  if (to) txConds.push(lte(paymentTransactions.createdAt, to));
+  const txAgg = await db
+    .select({
+      month: sql<string>`to_char(${paymentTransactions.createdAt}, 'YYYY-MM')`,
+      isComp: sql<boolean>`(${paymentTransactions.resultCode} = 'COMP')`,
+      isRetainer: sql<boolean>`(${paymentTransactions.paymentType} = 'retainer')`,
+      total: sql<number>`COALESCE(SUM(${paymentTransactions.amount}), 0)`,
+    })
+    .from(paymentTransactions)
+    .where(and(...txConds))
+    .groupBy(sql`1`, sql`2`, sql`3`);
+
+  // 환불 거래(월별 합계)
+  const refConds = [eq(paymentTransactions.status, "refunded")];
+  if (from) refConds.push(gte(paymentTransactions.createdAt, from));
+  if (to) refConds.push(lte(paymentTransactions.createdAt, to));
+  const refAgg = await db
+    .select({
+      month: sql<string>`to_char(${paymentTransactions.createdAt}, 'YYYY-MM')`,
+      total: sql<number>`COALESCE(SUM(${paymentTransactions.amount}), 0)`,
+    })
+    .from(paymentTransactions)
+    .where(and(...refConds))
+    .groupBy(sql`1`);
+
+  // 수동장부(월·방향별)
+  const entryConds = accountingDateConds(req);
+  const ledgerAgg = await db
+    .select({
+      month: sql<string>`to_char(${revenueEntries.entryDate}, 'YYYY-MM')`,
+      direction: revenueEntries.direction,
+      total: sql<number>`COALESCE(SUM(${revenueEntries.amount}), 0)`,
+    })
+    .from(revenueEntries)
+    .where(entryConds.length ? and(...entryConds) : undefined)
+    .groupBy(sql`1`, revenueEntries.direction);
+
+  const map = new Map<string, MonthRow>();
+  const get = (m: string): MonthRow => {
+    let r = map.get(m);
+    if (!r) { r = { month: m, retainer: 0, other: 0, comp: 0, refund: 0, ledgerIncome: 0, ledgerExpense: 0, net: 0 }; map.set(m, r); }
+    return r;
+  };
+  for (const r of txAgg) {
+    const row = get(r.month);
+    const amt = Number(r.total) || 0;
+    if (r.isComp) row.comp += amt;            // 직권면제(실제 수금 아님)
+    else if (r.isRetainer) row.retainer += amt;
+    else row.other += amt;                    // 성공보수·지급명령·가압류 등 기타
+  }
+  for (const r of refAgg) get(r.month).refund += Number(r.total) || 0;
+  for (const r of ledgerAgg) {
+    const row = get(r.month);
+    if (r.direction === "income") row.ledgerIncome += Number(r.total) || 0;
+    else row.ledgerExpense += Number(r.total) || 0;
+  }
+
+  const months = [...map.values()].map((r) => {
+    // 순합계: 실수금(착수금+기타) − 환불 + 장부수입 − 장부지출. 직권면제(comp)는 실수금 아니므로 제외.
+    r.net = r.retainer + r.other - r.refund + r.ledgerIncome - r.ledgerExpense;
+    return r;
+  }).sort((a, b) => (a.month < b.month ? 1 : -1));
+
+  const totals: MonthRow = { month: "합계", retainer: 0, other: 0, comp: 0, refund: 0, ledgerIncome: 0, ledgerExpense: 0, net: 0 };
+  for (const m of months) {
+    totals.retainer += m.retainer; totals.other += m.other; totals.comp += m.comp;
+    totals.refund += m.refund; totals.ledgerIncome += m.ledgerIncome; totals.ledgerExpense += m.ledgerExpense; totals.net += m.net;
+  }
+  return { months, totals, range: { from: from ? from.toISOString() : null, to: to ? to.toISOString() : null } };
 }
 
 // HTML 이스케이프(이메일 본문에 사용자 입력 삽입 시) — 저장형 HTML 인젝션 방지
@@ -246,6 +419,19 @@ export function registerRoutes(app: Express) {
         phone: phone?.trim() || null,
         role: "member",
       }).returning();
+
+      // 새 회원 가입 → 운영자(허왕) 알림(SMS+이메일). 멱등(admin_signup:userId). 응답 차단 안 함.
+      void notifyAdminEvent({
+        templateKey: "admin_signup",
+        dedupeKey: `admin_signup:${user.id}`,
+        smsTitle: "새 회원 가입",
+        subject: "새 회원 가입",
+        lines: [
+          ["이름", user.name],
+          ["이메일", user.email],
+          ["전화", user.phone],
+        ],
+      }).catch(() => {});
 
       try {
         await loginWithSessionRegeneration(req, user); // 세션 재생성(Session Fixation 방지)
@@ -572,6 +758,19 @@ export function registerRoutes(app: Express) {
         .update(cases)
         .set({ currentCount: sql`${cases.currentCount} + 1` })
         .where(eq(cases.id, caseId));
+
+      // 단체소송 참여 신청 → 운영자(허왕) 알림(SMS+이메일). 멱등(admin_join:casePartyId). 응답 차단 안 함.
+      void notifyAdminEvent({
+        templateKey: "admin_join",
+        dedupeKey: `admin_join:${party.id}`,
+        smsTitle: "단체소송 참여 신청",
+        subject: "단체소송 참여 신청",
+        lines: [
+          ["사건", caseData.title || "단체소송"],
+          ["이름", party.name],
+          ["전화", party.phone],
+        ],
+      }).catch(() => {});
 
       return res.status(201).json(party);
     } catch (err) {
@@ -901,11 +1100,13 @@ export function registerRoutes(app: Express) {
       const approvalResult = await requestPaymentApproval(TID, Moid, Amt);
 
       if (approvalResult.ResultCode === "3001" || approvalResult.ResultCode === "0000") {
-        await completePayment(Moid, TID, approvalResult);
+        const paid = await completePayment(Moid, TID, approvalResult);
         // 실제 완료된 orderId 를 링크에 확정(본인취소가 올바른 거래를 찾도록)
         if (claimedLinkId) {
           await db.update(paymentLinks).set({ lastSessionOrderId: Moid }).where(eq(paymentLinks.id, claimedLinkId));
         }
+        // 결제 완료 → 운영자(허왕) 알림(SMS+이메일). 멱등(admin_paid:orderId). 응답 차단 안 함.
+        void notifyAdminPayment(paid, Moid).catch(() => {});
         return res.redirect(`/payment/success?orderId=${Moid}`);
       } else {
         // 승인 실패 → 선점한 링크를 active 로 롤백(재시도 허용)
@@ -931,7 +1132,7 @@ export function registerRoutes(app: Express) {
   app.post("/api/admin/cases/:id/payment-links", requireAdmin, async (req, res) => {
     try {
       const caseId = parseInt(req.params.id);
-      const { casePartyIds, paymentType = "retainer", amount, expiresInDays = 7, send = true } = req.body;
+      const { casePartyIds, paymentType = "retainer", amount, expiresInDays = 7, send = true, couponCode } = req.body;
       const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
       if (!caseData) return res.status(404).json({ error: "사건을 찾을 수 없습니다." });
 
@@ -942,18 +1143,45 @@ export function registerRoutes(app: Express) {
       }
       if (!targets.length) return res.status(400).json({ error: "대상 당사자가 없습니다." });
 
-      const linkAmount = amount ? parseInt(amount) : (paymentType === "retainer" ? caseData.retainerFee : 0);
-      if (!linkAmount || linkAmount <= 0) return res.status(400).json({ error: "결제 금액을 지정해주세요." });
+      const baseAmount = amount ? parseInt(amount) : (paymentType === "retainer" ? caseData.retainerFee : 0);
+      if (!baseAmount || baseAmount <= 0) return res.status(400).json({ error: "결제 금액을 지정해주세요." });
+
+      // 쿠폰(착수금 할인) 검증 — 코드가 주어진 경우에만
+      let coupon: any = null;
+      if (couponCode) {
+        const code = String(couponCode).toUpperCase().trim();
+        const [c] = await db.select().from(coupons).where(eq(coupons.code, code)).limit(1);
+        if (!c) return res.status(400).json({ error: "쿠폰을 찾을 수 없습니다." });
+        if (!c.active) return res.status(400).json({ error: "비활성 쿠폰입니다." });
+        if (c.caseId && c.caseId !== caseId) return res.status(400).json({ error: "다른 사건 전용 쿠폰입니다." });
+        if (c.expiresAt && new Date() > c.expiresAt) return res.status(400).json({ error: "만료된 쿠폰입니다." });
+        if (c.maxUses > 0 && c.usedCount + targets.length > c.maxUses) return res.status(400).json({ error: "쿠폰 사용 한도를 초과합니다." });
+        coupon = c;
+      }
+      const discountFor = (amt: number): number => {
+        if (!coupon) return 0;
+        const d = coupon.discountType === "percent"
+          ? Math.floor((amt * Math.max(0, Math.min(100, coupon.discountValue))) / 100)
+          : coupon.discountValue;
+        return Math.max(0, Math.min(amt, d)); // 할인은 금액을 음수로 만들지 않음
+      };
+
       const goodsName = (PAYLINK_GOODS[paymentType] || ((t: string) => `[결제] ${t}`))(caseData.title);
       const expiresAt = new Date(Date.now() + Math.max(1, Math.min(60, parseInt(expiresInDays) || 7)) * 86400000);
 
       const out: any[] = [];
       for (const p of targets) {
+        const discountAmount = discountFor(baseAmount);
+        const linkAmount = Math.max(0, baseAmount - discountAmount);
         const token = crypto.randomBytes(24).toString("base64url");
         const [link] = await db.insert(paymentLinks).values({
           token, caseId, casePartyId: p.id, userId: p.userId, amount: linkAmount,
           paymentType, goodsName, status: "active", expiresAt, createdBy: (req.user as any).id,
+          couponId: coupon?.id ?? null, discountAmount,
         }).returning();
+        if (coupon) {
+          await db.update(coupons).set({ usedCount: sql`${coupons.usedCount} + 1` }).where(eq(coupons.id, coupon.id));
+        }
         const url = `${PUBLIC_BASE}/pay/${token}`;
         let sendStatus = "not_sent";
         if (send && p.phone) {
@@ -962,9 +1190,9 @@ export function registerRoutes(app: Express) {
             { templateKey: "payment_link", caseId, casePartyId: p.id, paymentLinkId: link.id, dedupeKey: `paylink:${link.id}` });
           sendStatus = r.status;
         }
-        out.push({ partyId: p.id, name: p.name, url, sendStatus });
+        out.push({ partyId: p.id, name: p.name, url, sendStatus, amount: linkAmount, discountAmount });
       }
-      await logAudit(req, "create_payment_link", "payment_links", caseId, `${out.length}건`);
+      await logAudit(req, "create_payment_link", "payment_links", caseId, `${out.length}건${coupon ? ` (쿠폰 ${coupon.code})` : ""}`);
       return res.json({ count: out.length, links: out });
     } catch (err) {
       console.error("결제링크 생성 오류:", err);
@@ -1504,16 +1732,65 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // 당사자 상태 변경 (관리자)
+  // 당사자 상태 변경 (관리자) — status↔paymentStatus 정합 동기화(드리프트 방지)
   app.put("/api/admin/parties/:id/status", requireAdmin, async (req, res) => {
     try {
+      const allowed = ["registered", "contracted", "paid", "verified"];
+      const status = req.body?.status;
+      if (!allowed.includes(status)) return res.status(400).json({ error: "유효한 상태가 아닙니다." });
+      const partyId = pid(req);
+      if (!Number.isInteger(partyId)) return res.status(400).json({ error: "잘못된 요청" });
+      // status='paid'면 결제완료로 동기화, 'registered'/'contracted'로 되돌리면 미결제로(이미 환불이면 보존)
+      const set: any = { status };
+      const [cur] = await db.select({ paymentStatus: caseParties.paymentStatus }).from(caseParties)
+        .where(eq(caseParties.id, partyId)).limit(1);
+      if (!cur) return res.status(404).json({ error: "당사자를 찾을 수 없습니다." });
+      if (status === "paid" || status === "verified") {
+        if (cur.paymentStatus !== "refunded") set.paymentStatus = "completed";
+      } else if (status === "registered" || status === "contracted") {
+        if (cur.paymentStatus === "completed") set.paymentStatus = "pending";
+      }
       const [updated] = await db
         .update(caseParties)
-        .set({ status: req.body.status })
-        .where(eq(caseParties.id, parseInt(req.params.id)))
+        .set(set)
+        .where(eq(caseParties.id, partyId))
         .returning();
-      return res.json(updated);
+      await logAudit(req, "update_party_status", "case_parties", partyId, `status=${status}${set.paymentStatus ? `, paymentStatus=${set.paymentStatus}` : ""}`);
+      return res.json(stripPII(updated));
     } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 당사자 직권 완료처리(착수금 면제/완료) — 실제 결제 없이 paid+completed 동기화 + 수동거래 마커
+  app.post("/api/admin/parties/:id/comp", requireAdmin, async (req, res) => {
+    try {
+      const partyId = pid(req);
+      if (!Number.isInteger(partyId)) return res.status(400).json({ error: "잘못된 요청" });
+      const reason = String(req.body?.reason || "").trim();
+      if (!reason) return res.status(400).json({ error: "면제 사유를 입력해주세요." });
+      const amount = Number.isInteger(parseInt(req.body?.amount)) ? Math.max(0, parseInt(req.body.amount)) : 0;
+      const [party] = await db.select().from(caseParties).where(eq(caseParties.id, partyId)).limit(1);
+      if (!party) return res.status(404).json({ error: "당사자를 찾을 수 없습니다." });
+
+      const result = await db.transaction(async (tx) => {
+        const [updated] = await tx.update(caseParties)
+          .set({ status: "paid", paymentStatus: "completed" })
+          .where(eq(caseParties.id, partyId)).returning();
+        // 수동(직권) 거래 마커 — resultCode='COMP', status='completed', amount=면제금액(보통 0)
+        const orderId = `COMP-${partyId}-${Date.now()}`;
+        await tx.insert(paymentTransactions).values({
+          casePartyId: partyId, caseId: party.caseId, userId: party.userId,
+          orderId, amount, resultCode: "COMP", resultMsg: `직권 완료처리: ${reason}`.slice(0, 255),
+          status: "completed", paymentType: "retainer",
+        });
+        return updated;
+      });
+
+      await logAudit(req, "comp_party", "case_parties", partyId, `직권 완료처리(착수금 면제) 사유: ${reason} / 금액: ${amount}`);
+      return res.json(stripPII(result));
+    } catch (err) {
+      console.error("직권 완료처리 오류:", err);
       return res.status(500).json({ error: "서버 오류" });
     }
   });
@@ -1888,7 +2165,20 @@ export function registerRoutes(app: Express) {
       if (!Array.isArray(ids) || !ids.length || !allowed.includes(status)) return res.status(400).json({ error: "ids·status가 필요합니다." });
       const intIds = ids.map((n: any) => parseInt(n, 10)).filter((n: number) => Number.isInteger(n)).slice(0, 2000);
       if (!intIds.length) return res.status(400).json({ error: "유효한 대상이 없습니다." });
-      await db.update(caseParties).set({ status }).where(inArray(caseParties.id, intIds));
+      // status↔paymentStatus 정합 동기화(드리프트 방지). 환불 건은 보존하므로 paymentStatus 조건부 갱신.
+      if (status === "paid" || status === "verified") {
+        await db.update(caseParties)
+          .set({ status, paymentStatus: "completed" })
+          .where(and(inArray(caseParties.id, intIds), sql`${caseParties.paymentStatus} <> 'refunded'`));
+        await db.update(caseParties).set({ status })
+          .where(and(inArray(caseParties.id, intIds), eq(caseParties.paymentStatus, "refunded")));
+      } else {
+        await db.update(caseParties)
+          .set({ status, paymentStatus: "pending" })
+          .where(and(inArray(caseParties.id, intIds), eq(caseParties.paymentStatus, "completed")));
+        await db.update(caseParties).set({ status })
+          .where(and(inArray(caseParties.id, intIds), sql`${caseParties.paymentStatus} <> 'completed'`));
+      }
       await logAudit(req, "bulk_update_party_status", "case_parties", undefined, `${intIds.length}건 → ${status}`);
       return res.json({ ok: true, updated: intIds.length });
     } catch (err) {
@@ -1925,12 +2215,13 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // 사용자 목록
+  // 사용자 목록 (소프트 삭제 제외)
   app.get("/api/admin/users", requireAdmin, async (req, res) => {
     try {
       const rows = await db
         .select({ id: users.id, email: users.email, name: users.name, phone: users.phone, role: users.role, createdAt: users.createdAt })
         .from(users)
+        .where(isNull(users.deletedAt))
         .orderBy(desc(users.createdAt))
         .limit(2000);
       return res.json(rows);
@@ -1939,11 +2230,94 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // 사용자 생성 (관리자) — 직권 계정 개설. 임시 비밀번호 선택.
+  app.post("/api/admin/users", requireAdmin, async (req, res) => {
+    try {
+      const allowedRoles = ["member", "lawyer", "admin", "owner"];
+      const email = String(req.body?.email || "").toLowerCase().trim();
+      const name = String(req.body?.name || "").trim();
+      const phone = req.body?.phone ? String(req.body.phone).trim() : null;
+      let role = String(req.body?.role || "member").trim();
+      const tempPassword = req.body?.tempPassword ? String(req.body.tempPassword) : "";
+      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: "유효한 이메일이 필요합니다." });
+      if (!name) return res.status(400).json({ error: "이름은 필수입니다." });
+      if (!allowedRoles.includes(role)) role = "member";
+      // owner 권한 부여는 오너만
+      if (role === "owner" && (req.user as any).role !== "owner") return res.status(403).json({ error: "오너 권한 부여는 오너만 가능합니다." });
+      if (tempPassword && tempPassword.length < 8) return res.status(400).json({ error: "임시 비밀번호는 8자 이상이어야 합니다." });
+
+      // 활성 계정 중복만 차단(소프트 삭제된 동일 이메일은 unique 제약상 충돌 → 명확한 안내)
+      const [existing] = await db.select({ id: users.id, deletedAt: users.deletedAt }).from(users).where(eq(users.email, email)).limit(1);
+      if (existing) {
+        return res.status(409).json({ error: existing.deletedAt ? "탈퇴 처리된 동일 이메일 계정이 있습니다." : "이미 등록된 이메일입니다." });
+      }
+
+      const hashed = tempPassword ? await hashPassword(tempPassword) : null;
+      const [user] = await db.insert(users).values({ email, password: hashed, name, phone, role }).returning(
+        { id: users.id, email: users.email, name: users.name, phone: users.phone, role: users.role, createdAt: users.createdAt }
+      );
+      await logAudit(req, "create_user", "users", user.id, `직권 계정 개설: ${email} (role=${role})`);
+      return res.status(201).json(user);
+    } catch (err) {
+      console.error("사용자 생성 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 사용자 프로필 수정 (관리자) — 이름/연락처/이메일 (권한 변경은 별도 owner 전용 라우트)
+  app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = pid(req);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const [target] = await db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt))).limit(1);
+      if (!target) return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
+
+      const patch: any = {};
+      if (typeof req.body?.name === "string" && req.body.name.trim()) patch.name = req.body.name.trim();
+      if (req.body?.phone !== undefined) patch.phone = req.body.phone ? String(req.body.phone).trim() : null;
+      if (typeof req.body?.email === "string" && req.body.email.trim()) {
+        const email = req.body.email.toLowerCase().trim();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: "유효한 이메일이 아닙니다." });
+        if (email !== target.email) {
+          const [dup] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+          if (dup) return res.status(409).json({ error: "이미 사용 중인 이메일입니다." });
+          patch.email = email;
+        }
+      }
+      if (!Object.keys(patch).length) return res.status(400).json({ error: "변경할 내용이 없습니다." });
+      const [updated] = await db.update(users).set(patch).where(eq(users.id, id)).returning(
+        { id: users.id, email: users.email, name: users.name, phone: users.phone, role: users.role, createdAt: users.createdAt }
+      );
+      await logAudit(req, "update_user", "users", id, `프로필 수정: ${Object.keys(patch).join(", ")}`);
+      return res.json(updated);
+    } catch (err) {
+      console.error("사용자 수정 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 사용자 소프트 삭제 (오너 전용) — deletedAt 설정, 목록·인증에서 제외
+  app.delete("/api/admin/users/:id", requireOwner, async (req, res) => {
+    try {
+      const id = pid(req);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      if (id === (req.user as any).id) return res.status(400).json({ error: "본인 계정은 삭제할 수 없습니다." });
+      const [target] = await db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt))).limit(1);
+      if (!target) return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
+      await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, id));
+      await logAudit(req, "delete_user", "users", id, `회원 소프트 삭제: ${target.email}`);
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("사용자 삭제 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
   // 사용자 권한 변경 (owner 전용) — member ↔ lawyer ↔ admin ↔ owner
   app.patch("/api/admin/users/:id/role", requireOwner, async (req, res) => {
     try {
       const allowed = ["member", "lawyer", "admin", "owner"];
-      const id = parseInt(req.params.id, 10);
+      const id = pid(req);
       const { role } = req.body || {};
       if (!Number.isInteger(id) || !allowed.includes(role)) return res.status(400).json({ error: "유효한 역할이 아닙니다." });
       if (id === (req.user as any).id && role !== "owner") return res.status(400).json({ error: "본인 오너 권한은 해제할 수 없습니다." });
@@ -1971,6 +2345,286 @@ export function registerRoutes(app: Express) {
         .limit(1000);
       return res.json(rows);
     } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // ═══════════════════════════════════════════
+  // 쿠폰 (착수금 할인코드)
+  // ═══════════════════════════════════════════
+  app.get("/api/admin/coupons", requireAdmin, async (req, res) => {
+    try {
+      const rows = await db
+        .select({
+          id: coupons.id, code: coupons.code, caseId: coupons.caseId, caseTitle: cases.title,
+          discountType: coupons.discountType, discountValue: coupons.discountValue,
+          maxUses: coupons.maxUses, usedCount: coupons.usedCount, active: coupons.active,
+          expiresAt: coupons.expiresAt, createdAt: coupons.createdAt,
+        })
+        .from(coupons)
+        .leftJoin(cases, eq(coupons.caseId, cases.id))
+        .orderBy(desc(coupons.createdAt))
+        .limit(2000);
+      return res.json(rows);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  app.post("/api/admin/coupons", requireAdmin, async (req, res) => {
+    try {
+      const code = String(req.body?.code || "").toUpperCase().trim();
+      const discountType = String(req.body?.discountType || "").trim();
+      const discountValue = parseInt(req.body?.discountValue, 10);
+      if (!/^[A-Z0-9_-]{3,60}$/.test(code)) return res.status(400).json({ error: "코드는 영문 대문자·숫자·-_ 3~60자입니다." });
+      if (!["fixed", "percent"].includes(discountType)) return res.status(400).json({ error: "할인 유형이 올바르지 않습니다." });
+      if (!Number.isInteger(discountValue) || discountValue <= 0) return res.status(400).json({ error: "할인 값을 입력해주세요." });
+      if (discountType === "percent" && discountValue > 100) return res.status(400).json({ error: "정률 할인은 100% 이하여야 합니다." });
+      const caseId = req.body?.caseId ? parseInt(req.body.caseId, 10) : null;
+      const maxUses = Number.isInteger(parseInt(req.body?.maxUses, 10)) ? Math.max(0, parseInt(req.body.maxUses, 10)) : 0;
+      const expiresAt = req.body?.expiresAt ? new Date(req.body.expiresAt) : null;
+      if (expiresAt && isNaN(expiresAt.getTime())) return res.status(400).json({ error: "만료일 형식이 올바르지 않습니다." });
+
+      const [dup] = await db.select({ id: coupons.id }).from(coupons).where(eq(coupons.code, code)).limit(1);
+      if (dup) return res.status(409).json({ error: "이미 존재하는 쿠폰 코드입니다." });
+
+      const [created] = await db.insert(coupons).values({
+        code, caseId, discountType, discountValue, maxUses,
+        active: req.body?.active === false ? false : true,
+        expiresAt, createdBy: (req.user as any).id,
+      }).returning();
+      await logAudit(req, "create_coupon", "coupons", created.id, `쿠폰 생성: ${code} (${discountType} ${discountValue})`);
+      return res.status(201).json(created);
+    } catch (err) {
+      console.error("쿠폰 생성 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  app.put("/api/admin/coupons/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = pid(req);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const [cur] = await db.select().from(coupons).where(eq(coupons.id, id)).limit(1);
+      if (!cur) return res.status(404).json({ error: "쿠폰을 찾을 수 없습니다." });
+      const patch: any = {};
+      if (req.body?.active !== undefined) patch.active = !!req.body.active;
+      if (req.body?.maxUses !== undefined && Number.isInteger(parseInt(req.body.maxUses, 10))) patch.maxUses = Math.max(0, parseInt(req.body.maxUses, 10));
+      if (req.body?.expiresAt !== undefined) {
+        if (!req.body.expiresAt) patch.expiresAt = null;
+        else { const d = new Date(req.body.expiresAt); if (isNaN(d.getTime())) return res.status(400).json({ error: "만료일 형식 오류" }); patch.expiresAt = d; }
+      }
+      if (!Object.keys(patch).length) return res.status(400).json({ error: "변경할 내용이 없습니다." });
+      const [updated] = await db.update(coupons).set(patch).where(eq(coupons.id, id)).returning();
+      await logAudit(req, "update_coupon", "coupons", id, `쿠폰 수정: ${Object.keys(patch).join(", ")}`);
+      return res.json(updated);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  app.delete("/api/admin/coupons/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = pid(req);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const [cur] = await db.select({ code: coupons.code }).from(coupons).where(eq(coupons.id, id)).limit(1);
+      if (!cur) return res.status(404).json({ error: "쿠폰을 찾을 수 없습니다." });
+      // 발급 링크가 couponId 를 소프트 참조하므로 행 삭제는 안전(링크는 보존). 비활성화 권장이나 삭제 허용.
+      await db.delete(coupons).where(eq(coupons.id, id));
+      await logAudit(req, "delete_coupon", "coupons", id, `쿠폰 삭제: ${cur.code}`);
+      return res.json({ ok: true });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // ═══════════════════════════════════════════
+  // 회계 (LEVEL 2) — 수동 장부 · 월별 정산 · XLSX 내보내기
+  // ═══════════════════════════════════════════
+  // 수동 장부 목록
+  app.get("/api/admin/accounting/entries", requireAdmin, async (req, res) => {
+    try {
+      const conds = accountingDateConds(req);
+      const rows = await db.select().from(revenueEntries)
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(revenueEntries.entryDate), desc(revenueEntries.id))
+        .limit(5000);
+      return res.json(rows);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 수동 장부 생성
+  app.post("/api/admin/accounting/entries", requireAdmin, async (req, res) => {
+    try {
+      const direction = String(req.body?.direction || "").trim();
+      if (!["income", "expense"].includes(direction)) return res.status(400).json({ error: "수입/지출 구분이 올바르지 않습니다." });
+      const amount = parseInt(req.body?.amount, 10);
+      if (!Number.isInteger(amount) || amount <= 0) return res.status(400).json({ error: "금액을 입력해주세요." });
+      const entryDate = req.body?.entryDate ? new Date(req.body.entryDate) : new Date();
+      if (isNaN(entryDate.getTime())) return res.status(400).json({ error: "날짜 형식이 올바르지 않습니다." });
+      const [created] = await db.insert(revenueEntries).values({
+        entryDate, direction, amount,
+        category: req.body?.category ? String(req.body.category).slice(0, 50) : null,
+        memo: req.body?.memo ? String(req.body.memo) : null,
+        source: "manual", createdBy: (req.user as any).id,
+      }).returning();
+      await logAudit(req, "create_revenue_entry", "revenue_entries", created.id, `${direction} ${amount} ${req.body?.category || ""}`);
+      return res.status(201).json(created);
+    } catch (err) {
+      console.error("장부 생성 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 수동 장부 수정
+  app.put("/api/admin/accounting/entries/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = pid(req);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const [cur] = await db.select().from(revenueEntries).where(eq(revenueEntries.id, id)).limit(1);
+      if (!cur) return res.status(404).json({ error: "항목을 찾을 수 없습니다." });
+      const patch: any = {};
+      if (req.body?.direction && ["income", "expense"].includes(req.body.direction)) patch.direction = req.body.direction;
+      if (req.body?.amount !== undefined) { const a = parseInt(req.body.amount, 10); if (!Number.isInteger(a) || a <= 0) return res.status(400).json({ error: "금액 오류" }); patch.amount = a; }
+      if (req.body?.entryDate) { const d = new Date(req.body.entryDate); if (isNaN(d.getTime())) return res.status(400).json({ error: "날짜 오류" }); patch.entryDate = d; }
+      if (req.body?.category !== undefined) patch.category = req.body.category ? String(req.body.category).slice(0, 50) : null;
+      if (req.body?.memo !== undefined) patch.memo = req.body.memo ? String(req.body.memo) : null;
+      if (!Object.keys(patch).length) return res.status(400).json({ error: "변경할 내용이 없습니다." });
+      const [updated] = await db.update(revenueEntries).set(patch).where(eq(revenueEntries.id, id)).returning();
+      await logAudit(req, "update_revenue_entry", "revenue_entries", id, Object.keys(patch).join(", "));
+      return res.json(updated);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 수동 장부 삭제
+  app.delete("/api/admin/accounting/entries/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = pid(req);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const [cur] = await db.select({ id: revenueEntries.id }).from(revenueEntries).where(eq(revenueEntries.id, id)).limit(1);
+      if (!cur) return res.status(404).json({ error: "항목을 찾을 수 없습니다." });
+      await db.delete(revenueEntries).where(eq(revenueEntries.id, id));
+      await logAudit(req, "delete_revenue_entry", "revenue_entries", id);
+      return res.json({ ok: true });
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 회계 요약 (월별 정산: 착수금/성공보수·기타 분리 + 수동장부 net + 환불 + 직권면제 분리)
+  app.get("/api/admin/accounting/summary", requireAdmin, async (req, res) => {
+    try {
+      const data = await computeAccountingSummary(req);
+      await logAudit(req, "view_accounting", "payment_transactions");
+      return res.json(data);
+    } catch (err) {
+      console.error("회계 요약 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 회계 XLSX 내보내기 (거래내역 / 수동장부 / 월별정산)
+  app.get("/api/admin/accounting/export.xlsx", requireAdmin, async (req, res) => {
+    try {
+      const { from, to } = accountingRange(req);
+      const txConds = [eq(paymentTransactions.status, "completed")];
+      if (from) txConds.push(gte(paymentTransactions.createdAt, from));
+      if (to) txConds.push(lte(paymentTransactions.createdAt, to));
+      const txRows = await db
+        .select({
+          createdAt: paymentTransactions.createdAt, caseTitle: cases.title, caseId: paymentTransactions.caseId,
+          paymentType: paymentTransactions.paymentType, amount: paymentTransactions.amount,
+          resultCode: paymentTransactions.resultCode, orderId: paymentTransactions.orderId,
+          cardName: paymentTransactions.cardName,
+        })
+        .from(paymentTransactions)
+        .leftJoin(cases, eq(paymentTransactions.caseId, cases.id))
+        .where(and(...txConds))
+        .orderBy(desc(paymentTransactions.createdAt))
+        .limit(20000);
+
+      const entryConds = accountingDateConds(req);
+      const ledger = await db.select().from(revenueEntries)
+        .where(entryConds.length ? and(...entryConds) : undefined)
+        .orderBy(desc(revenueEntries.entryDate)).limit(20000);
+
+      const summary = await computeAccountingSummary(req);
+
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "로사이어티 관리 콘솔";
+      const won = (n: number) => Math.round(n || 0);
+
+      // 시트1: 거래내역 (⚠ 주민번호 등 PII 미포함 — 회계 필드만)
+      const s1 = wb.addWorksheet("거래내역");
+      s1.columns = [
+        { header: "일시", key: "d", width: 20 },
+        { header: "사건", key: "case", width: 30 },
+        { header: "구분", key: "type", width: 12 },
+        { header: "금액(원)", key: "amt", width: 14 },
+        { header: "비고", key: "memo", width: 16 },
+        { header: "주문번호", key: "order", width: 24 },
+      ];
+      const TYPE_KO: Record<string, string> = { retainer: "착수금", payment_order: "지급명령", seizure: "가압류", success_fee: "성공보수" };
+      for (const r of txRows) {
+        s1.addRow({
+          d: r.createdAt ? new Date(r.createdAt).toLocaleString("ko-KR") : "",
+          case: r.caseTitle || `사건 #${r.caseId}`,
+          type: r.resultCode === "COMP" ? "직권면제" : (TYPE_KO[r.paymentType] || r.paymentType),
+          amt: won(r.amount), memo: r.resultCode === "COMP" ? "COMP" : (r.cardName || ""), order: r.orderId,
+        });
+      }
+      s1.getRow(1).font = { bold: true };
+
+      // 시트2: 수동장부
+      const s2 = wb.addWorksheet("수동장부");
+      s2.columns = [
+        { header: "일자", key: "d", width: 16 },
+        { header: "구분", key: "dir", width: 10 },
+        { header: "분류", key: "cat", width: 16 },
+        { header: "금액(원)", key: "amt", width: 14 },
+        { header: "메모", key: "memo", width: 30 },
+      ];
+      for (const e of ledger) {
+        s2.addRow({
+          d: e.entryDate ? new Date(e.entryDate).toLocaleDateString("ko-KR") : "",
+          dir: e.direction === "income" ? "수입" : "지출",
+          cat: e.category || "", amt: won(e.amount), memo: e.memo || "",
+        });
+      }
+      s2.getRow(1).font = { bold: true };
+
+      // 시트3: 월별정산
+      const s3 = wb.addWorksheet("월별정산");
+      s3.columns = [
+        { header: "월", key: "m", width: 12 },
+        { header: "착수금(원)", key: "retainer", width: 16 },
+        { header: "성공보수·기타(원)", key: "other", width: 18 },
+        { header: "직권면제(원)", key: "comp", width: 14 },
+        { header: "환불(원)", key: "refund", width: 14 },
+        { header: "장부수입(원)", key: "li", width: 16 },
+        { header: "장부지출(원)", key: "le", width: 16 },
+        { header: "순합계(원)", key: "net", width: 16 },
+      ];
+      for (const m of summary.months) {
+        s3.addRow({ m: m.month, retainer: m.retainer, other: m.other, comp: m.comp, refund: m.refund, li: m.ledgerIncome, le: m.ledgerExpense, net: m.net });
+      }
+      s3.getRow(1).font = { bold: true };
+      const tot = summary.totals;
+      s3.addRow({});
+      s3.addRow({ m: "합계", retainer: tot.retainer, other: tot.other, comp: tot.comp, refund: tot.refund, li: tot.ledgerIncome, le: tot.ledgerExpense, net: tot.net }).font = { bold: true };
+
+      await logAudit(req, "export_data", "payment_transactions", undefined, "회계 XLSX 내보내기");
+      const buf = await wb.xlsx.writeBuffer();
+      const fname = `accounting_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);
+      return res.end(Buffer.from(buf));
+    } catch (err) {
+      console.error("회계 내보내기 오류:", err);
       return res.status(500).json({ error: "서버 오류" });
     }
   });
@@ -2113,7 +2767,7 @@ export function registerRoutes(app: Express) {
 
   app.patch("/api/admin/case-requests/:id", requireAdmin, async (req, res) => {
     try {
-      const id = parseInt(req.params.id, 10);
+      const id = pid(req);
       if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
       const allowed = ["new", "reviewing", "accepted", "declined", "converted"];
       const patch: any = {};
