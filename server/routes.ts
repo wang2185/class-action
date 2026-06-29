@@ -398,12 +398,45 @@ export function registerRoutes(app: Express) {
   // ═══════════════════════════════════════════
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const { email, password, name, phone } = req.body;
+      const { email, password, name, phone, birthDate, postalCode, addressLine1, addressLine2 } = req.body;
       if (!email || !password || !name) {
         return res.status(400).json({ error: "이메일, 비밀번호, 이름은 필수입니다." });
       }
       if (password.length < 8) {
         return res.status(400).json({ error: "비밀번호는 8자 이상이어야 합니다." });
+      }
+      // 생년월일(필수): 'YYYY-MM-DD' 형식 · 미래일 금지 · 만 14세 이상
+      const birth = String(birthDate || "").trim();
+      const birthM = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birth);
+      if (!birthM) {
+        return res.status(400).json({ error: "생년월일을 YYYY-MM-DD 형식으로 입력해주세요." });
+      }
+      const by = Number(birthM[1]), bmo = Number(birthM[2]), bd = Number(birthM[3]);
+      // 달력상 실재하는 날짜인지 round-trip 검증(02-30·02-31 등 자동보정/오버플로 차단)
+      const birthMs = Date.UTC(by, bmo - 1, bd);
+      const bdt = new Date(birthMs);
+      if (bdt.getUTCFullYear() !== by || bdt.getUTCMonth() !== bmo - 1 || bdt.getUTCDate() !== bd) {
+        return res.status(400).json({ error: "올바른 생년월일을 입력해주세요." });
+      }
+      const now = new Date();
+      const todayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      if (birthMs > todayMs) {
+        return res.status(400).json({ error: "생년월일이 미래일 수 없습니다." });
+      }
+      // 만 14세 이상(개인정보보호법상 법정대리인 동의 기준) — 만 14세가 되는 날(생일) 기준 비교
+      const turns14Ms = Date.UTC(by + 14, bmo - 1, bd);
+      if (turns14Ms > todayMs) {
+        return res.status(400).json({ error: "만 14세 이상만 가입할 수 있습니다." });
+      }
+      // 배송지주소(우편번호·기본주소 필수, 상세주소 선택)
+      const postal = String(postalCode || "").trim();
+      const addr1 = String(addressLine1 || "").trim();
+      const addr2 = String(addressLine2 || "").trim();
+      if (!postal) {
+        return res.status(400).json({ error: "우편번호를 입력해주세요." });
+      }
+      if (!addr1) {
+        return res.status(400).json({ error: "기본주소를 입력해주세요." });
       }
 
       const existing = await db.select().from(users).where(eq(users.email, email.toLowerCase().trim())).limit(1);
@@ -417,6 +450,10 @@ export function registerRoutes(app: Express) {
         password: hashed,
         name: name.trim(),
         phone: phone?.trim() || null,
+        birthDate: birth,
+        postalCode: postal.slice(0, 10),
+        addressLine1: addr1.slice(0, 255),
+        addressLine2: addr2.slice(0, 255) || null,
         role: "member",
       }).returning();
 
@@ -2219,7 +2256,7 @@ export function registerRoutes(app: Express) {
   app.get("/api/admin/users", requireAdmin, async (req, res) => {
     try {
       const rows = await db
-        .select({ id: users.id, email: users.email, name: users.name, phone: users.phone, role: users.role, createdAt: users.createdAt })
+        .select({ id: users.id, email: users.email, name: users.name, phone: users.phone, birthDate: users.birthDate, postalCode: users.postalCode, addressLine1: users.addressLine1, addressLine2: users.addressLine2, role: users.role, createdAt: users.createdAt })
         .from(users)
         .where(isNull(users.deletedAt))
         .orderBy(desc(users.createdAt))

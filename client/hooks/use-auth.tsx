@@ -17,7 +17,7 @@ type AuthContext = {
   isLawyer: boolean;
   isOwner: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; password: string; name: string; phone?: string }) => Promise<void>;
+  register: (data: { email: string; password: string; name: string; phone?: string; birthDate: string; postalCode: string; addressLine1: string; addressLine2?: string }) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: (data: { email: string; password: string; name: string; phone?: string }) =>
+    mutationFn: (data: { email: string; password: string; name: string; phone?: string; birthDate: string; postalCode: string; addressLine1: string; addressLine2?: string }) =>
       apiRequest("/api/auth/register", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["auth"] }),
   });

@@ -131,6 +131,8 @@ export default function AdminUsers() {
                   <th className="pb-3 font-semibold">이름</th>
                   <th className="pb-3 font-semibold">이메일</th>
                   <th className="pb-3 font-semibold">연락처</th>
+                  <th className="pb-3 font-semibold">생년월일</th>
+                  <th className="pb-3 font-semibold">배송지</th>
                   <th className="pb-3 font-semibold">가입일</th>
                   <th className="pb-3 font-semibold text-center">권한</th>
                   <th className="pb-3 font-semibold text-center">관리</th>
@@ -144,6 +146,8 @@ export default function AdminUsers() {
                         <td className="py-3"><input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="rounded border border-gray-300 px-2 py-1 text-sm w-28" /></td>
                         <td className="py-3"><input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="rounded border border-gray-300 px-2 py-1 text-sm w-48" /></td>
                         <td className="py-3"><input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="rounded border border-gray-300 px-2 py-1 text-sm w-32" /></td>
+                        <td className="py-3 text-gray-400">{u.birthDate || "-"}</td>
+                        <td className="py-3 text-gray-400">{u.postalCode ? `(${u.postalCode}) ${u.addressLine1 || ""}${u.addressLine2 ? ` ${u.addressLine2}` : ""}` : "-"}</td>
                         <td className="py-3 text-gray-400">{fmt(u.createdAt)}</td>
                         <td className="py-3 text-center"><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_CLS[u.role] || "bg-gray-100 text-gray-600"}`}>{ROLES.find((r) => r.v === u.role)?.l || u.role}</span></td>
                         <td className="py-3 text-center">
@@ -158,6 +162,8 @@ export default function AdminUsers() {
                         <td className="py-3 font-medium">{u.name}{me?.id === u.id && <span className="text-xs text-gray-400"> (나)</span>}</td>
                         <td className="py-3 text-gray-500">{u.email}</td>
                         <td className="py-3 text-gray-500">{u.phone || "-"}</td>
+                        <td className="py-3 text-gray-500">{u.birthDate || "-"}</td>
+                        <td className="py-3 text-gray-500 max-w-[16rem]"><span className="line-clamp-2" title={u.postalCode ? `(${u.postalCode}) ${u.addressLine1 || ""}${u.addressLine2 ? ` ${u.addressLine2}` : ""}` : ""}>{u.postalCode ? `(${u.postalCode}) ${u.addressLine1 || ""}${u.addressLine2 ? ` ${u.addressLine2}` : ""}` : "-"}</span></td>
                         <td className="py-3 text-gray-400">{fmt(u.createdAt)}</td>
                         <td className="py-3 text-center">
                           <select disabled={busy === u.id || !isOwner} value={u.role} onChange={(e) => changeRole(u.id, e.target.value)}

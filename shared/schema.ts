@@ -19,6 +19,11 @@ export const users = pgTable("users", {
   password: varchar("password", { length: 255 }), // 소셜 전용 계정은 null (비밀번호 없음)
   name: varchar("name", { length: 100 }).notNull(),
   phone: varchar("phone", { length: 20 }),
+  // 회원 개인정보(이메일 가입 시 수집) — 소셜/기존 가입은 null 허용
+  birthDate: varchar("birth_date", { length: 10 }), // 생년월일 'YYYY-MM-DD'
+  postalCode: varchar("postal_code", { length: 10 }), // 배송지 우편번호
+  addressLine1: varchar("address_line1", { length: 255 }), // 배송지 기본주소(도로명/지번)
+  addressLine2: varchar("address_line2", { length: 255 }), // 배송지 상세주소
   role: varchar("role", { length: 20 }).notNull().default("member"), // member, admin
   deletedAt: timestamp("deleted_at"), // 소프트 삭제 — null=활성, 값 있으면 탈퇴(목록·인증 제외)
   createdAt: timestamp("created_at").defaultNow().notNull(),
