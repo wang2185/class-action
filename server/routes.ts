@@ -2860,6 +2860,93 @@ export function registerRoutes(app: Express) {
   });
 
   // ═══════════════════════════════════════════
+  // HQ 포털 연동 — 서비스 집계(읽기 전용)
+  // hq.wanghuh.com 대시보드용. PII 미노출(건수·합계만). 베어러 토큰(HQ_SERVICE_TOKEN) 인증.
+  // ═══════════════════════════════════════════
+
+  // 현재 달(KST=UTC+9) 1일 00:00:00 의 UTC 시각. 서버 타임존과 무관하게 "이번 달(KST)" 경계를 산출.
+  // createdAt/entryDate 비교 하한으로 사용(>= monthStart).
+  function kstMonthStart(now: Date = new Date()): Date {
+    const kstMs = now.getTime() + 9 * 60 * 60 * 1000;       // UTC → KST 벽시계
+    const k = new Date(kstMs);
+    const y = k.getUTCFullYear();
+    const mo = k.getUTCMonth();
+    // KST 기준 이달 1일 00:00 → 그 절대시각(UTC) = KST자정 − 9h
+    return new Date(Date.UTC(y, mo, 1, 0, 0, 0) - 9 * 60 * 60 * 1000);
+  }
+
+  // 베어러 토큰 검증(타이밍 세이프). 토큰 미설정 시 503(라우트 비활성), 누락/불일치 시 401.
+  function hqAuthOk(req: Request, res: Response): boolean {
+    const expected = process.env.HQ_SERVICE_TOKEN || "";
+    if (!expected) { res.status(503).json({ error: "service token not configured" }); return false; }
+    const header = req.headers["authorization"];
+    const raw = Array.isArray(header) ? header[0] : header;
+    const m = /^Bearer\s+(.+)$/i.exec(String(raw || ""));
+    const provided = m ? m[1].trim() : "";
+    const a = Buffer.from(expected, "utf8");
+    const b = Buffer.from(provided, "utf8");
+    // 길이가 다르면 timingSafeEqual 가 throw → 길이 비교를 먼저(상수시간 비교 대상은 동일 길이일 때만)
+    const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
+    if (!ok) { res.status(401).json({ error: "unauthorized" }); return false; }
+    return true;
+  }
+
+  // GET /api/service/summary — HQ 포털 단일 서비스 집계 카드. 카운트/합계만(주민번호 등 PII 절대 미노출).
+  app.get("/api/service/summary", async (req: Request, res: Response) => {
+    if (!hqAuthOk(req, res)) return;
+    try {
+      const monthStart = kstMonthStart();
+
+      // 매출(실수금): 완료 거래 합계. ⚠ 직권면제(resultCode='COMP')는 실제 수금이 아니므로 제외
+      //   (회계 모듈 computeAccountingSummary 의 retainer+other 정의와 일치. 착수금+성공보수만 집계).
+      const notComp = sql`(${paymentTransactions.resultCode} IS DISTINCT FROM 'COMP')`;
+      const [revAll] = await db
+        .select({ total: sql<number>`COALESCE(SUM(${paymentTransactions.amount}), 0)` })
+        .from(paymentTransactions)
+        .where(and(eq(paymentTransactions.status, "completed"), notComp));
+      const [revMonth] = await db
+        .select({ total: sql<number>`COALESCE(SUM(${paymentTransactions.amount}), 0)` })
+        .from(paymentTransactions)
+        .where(and(eq(paymentTransactions.status, "completed"), notComp, gte(paymentTransactions.createdAt, monthStart)));
+
+      // 환불: status='refunded' 거래 합계(회계 모듈 refund 정의와 동일). COMP 마커 제외.
+      const [refAll] = await db
+        .select({ total: sql<number>`COALESCE(SUM(${paymentTransactions.amount}), 0)` })
+        .from(paymentTransactions)
+        .where(and(eq(paymentTransactions.status, "refunded"), notComp));
+
+      // 회원: 소프트 삭제(deletedAt) 제외 활성 계정 수 / 이번 달 가입 수.
+      const [memAll] = await db.select({ c: count() }).from(users).where(isNull(users.deletedAt));
+      const [memMonth] = await db
+        .select({ c: count() })
+        .from(users)
+        .where(and(isNull(users.deletedAt), gte(users.createdAt, monthStart)));
+
+      // 사건: 전체 수 / 진행 중(open) 수.
+      //   openCaseCount 정의 = 종결 외 활성 상태. status ∈ {recruiting(모집중), filed(소제기), in_progress(진행중)}.
+      //   종결로 보는 상태(settled=합의, closed=종결)는 제외. (cases.status 주석 기준)
+      const OPEN_STATUSES = ["recruiting", "filed", "in_progress"];
+      const [caseAll] = await db.select({ c: count() }).from(cases);
+      const [caseOpen] = await db.select({ c: count() }).from(cases).where(inArray(cases.status, OPEN_STATUSES));
+
+      return res.json({
+        app: "class-action",
+        revenueTotal: Number(revAll?.total || 0),
+        revenueThisMonth: Number(revMonth?.total || 0),
+        refundTotal: Number(refAll?.total || 0),
+        memberCount: Number(memAll?.c || 0),
+        newMembersThisMonth: Number(memMonth?.c || 0),
+        caseCount: Number(caseAll?.c || 0),
+        openCaseCount: Number(caseOpen?.c || 0),
+        asOf: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("서비스 집계 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // ═══════════════════════════════════════════
   // Health Check
   // ═══════════════════════════════════════════
   app.get("/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
