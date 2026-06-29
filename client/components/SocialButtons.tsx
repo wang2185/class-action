@@ -6,6 +6,9 @@ const STYLE: Record<string, { cls: string; label: string }> = {
   kakao: { cls: "bg-[#FEE500] text-[#191600] hover:brightness-95", label: "카카오로 계속하기" },
   naver: { cls: "bg-[#03C75A] text-white hover:brightness-95", label: "네이버로 계속하기" },
   google: { cls: "bg-white text-ink border border-gray-300 hover:bg-gray-50", label: "Google로 계속하기" },
+  facebook: { cls: "bg-[#1877F2] text-white hover:brightness-95", label: "Facebook으로 계속하기" },
+  line: { cls: "bg-[#06C755] text-white hover:brightness-95", label: "라인으로 계속하기" },
+  microsoft: { cls: "bg-[#2F2F2F] text-white hover:brightness-110", label: "Microsoft로 계속하기" },
 };
 
 export default function SocialButtons({ redirect }: { redirect?: string }) {

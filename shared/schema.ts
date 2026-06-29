@@ -28,7 +28,7 @@ export const users = pgTable("users", {
 export const socialAccounts = pgTable("social_accounts", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
-  provider: varchar("provider", { length: 20 }).notNull(), // kakao | naver | google | apple
+  provider: varchar("provider", { length: 20 }).notNull(), // kakao | naver | google | facebook | line | microsoft
   providerUserId: varchar("provider_user_id", { length: 255 }).notNull(), // 제공자 측 고유 ID
   email: varchar("email", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
