@@ -11,6 +11,7 @@ export default function JoinCase() {
     residentNumber: "", damageAmount: "", damageDescription: "",
   });
   const [piiConsent, setPiiConsent] = useState(false);
+  const [residentConsent, setResidentConsent] = useState(false);
   const [error, setError] = useState("");
 
   const { data: caseData } = useQuery({
@@ -33,9 +34,16 @@ export default function JoinCase() {
     e.preventDefault();
     if (!piiConsent) { setError("개인정보 수집·이용 동의가 필요합니다."); return; }
     if (!form.name) { setError("이름은 필수입니다."); return; }
-    // 동의 기록 저장 후 참여 신청
+    const hasResident = form.residentNumber.trim().length > 0;
+    if (hasResident && !residentConsent) {
+      setError("주민등록번호(고유식별정보) 수집에는 별도 동의가 필요합니다. 동의하지 않으시려면 주민등록번호를 비워두세요.");
+      return;
+    }
+    // 동의 기록 저장 후 참여 신청 — 주민등록번호는 일반 개인정보와 별도 동의유형으로 분리 기록(개인정보 보호법 제24조의2)
+    const consentTypes = ["pii_collection"];
+    if (hasResident && residentConsent) consentTypes.push("unique_id_collection");
     try {
-      await apiRequest("/api/consent", { method: "POST", body: JSON.stringify({ consentTypes: ["pii_collection"], version: "1.0" }) });
+      await apiRequest("/api/consent", { method: "POST", body: JSON.stringify({ consentTypes }) });
     } catch { setError("동의 기록 저장에 실패했습니다. 다시 시도해주세요."); return; }
     joinMutation.mutate(form);
   };
@@ -90,10 +98,14 @@ export default function JoinCase() {
         <h2 className="font-bold text-lg border-b pb-2 pt-4">증거 파일 업로드</h2>
         <p className="text-sm text-gray-500">참여 신청 후 증거 파일을 업로드할 수 있습니다.</p>
 
-        <div className="bg-gray-50 rounded-lg p-4">
+        <div className="bg-gray-50 rounded-lg p-4 space-y-3">
           <label className="flex items-start gap-2 text-sm cursor-pointer">
             <input type="checkbox" checked={piiConsent} onChange={(e) => setPiiConsent(e.target.checked)} className="mt-0.5" />
-            <span>소송 진행을 위한 개인정보(이름, 연락처, 주소, 주민등록번호, 피해내용) 수집·이용에 동의합니다. 주민등록번호는 AES-256-GCM으로 암호화 저장됩니다. <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary-500 underline">개인정보처리방침</Link> (필수)</span>
+            <span><strong>[필수]</strong> 소송 진행을 위한 개인정보(이름, 연락처, 주소, 피해금액·내용) 수집·이용에 동의합니다. <Link to="/consent" target="_blank" rel="noopener noreferrer" className="text-primary-500 underline">수집·이용 동의서</Link> · <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary-500 underline">개인정보처리방침</Link></span>
+          </label>
+          <label className="flex items-start gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={residentConsent} onChange={(e) => setResidentConsent(e.target.checked)} className="mt-0.5" />
+            <span><strong>[필수 — 주민등록번호 입력 시]</strong> 고유식별정보(주민등록번호)의 수집·이용에 별도로 동의합니다(개인정보 보호법 제24조의2). 주민등록번호는 AES-256-GCM으로 암호화 저장되며, 소장 작성 등 소송 수행 목적 외에는 이용되지 않습니다. 동의하지 않으시면 주민등록번호를 비워두고 신청할 수 있습니다.</span>
           </label>
         </div>
 

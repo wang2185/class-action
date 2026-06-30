@@ -277,7 +277,7 @@ export const consents = pgTable("consents", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
   consentType: varchar("consent_type", { length: 50 }).notNull(),
-  // privacy_policy, pii_collection, third_party_sharing, marketing
+  // privacy_policy, pii_collection, unique_id_collection(주민등록번호 별도동의·§24의2), third_party_sharing, marketing, service_terms
   version: varchar("version", { length: 20 }).notNull().default("1.0"),
   agreed: boolean("agreed").notNull().default(true),
   ipAddress: varchar("ip_address", { length: 45 }),

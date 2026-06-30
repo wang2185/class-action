@@ -26,17 +26,19 @@ import {
 
 // 공개 절대 URL (결제/진행 링크)
 const PUBLIC_BASE = (process.env.PUBLIC_BASE_URL || process.env.CORS_ORIGIN || "https://class.lawciety.com").replace(/\/$/, "");
-const CONSENT_VERSION = "1.0"; // 동의 버전(서버 고정)
+const CONSENT_VERSION = "2.0"; // 동의 버전(서버 고정) — 2026-07-01 PIPC 표준 개정
 const REQUIRED_CONSENTS = ["service_terms", "pii_collection"]; // 필수 동의 항목
 
 // 필수 동의(현행 버전) 보유 여부
 async function hasRequiredConsent(userId: number): Promise<boolean> {
+  // ⚠ 버전 일치는 요구하지 않음 — 정책 개정(버전 상향) 시 기존 동의 사용자를 동의게이트에서
+  // 잠그지 않도록(레거시 회귀 방지). 정책 변경은 개인정보 보호법 제30조 공지로 고지하며,
+  // 신규 동의는 현행 CONSENT_VERSION으로 기록된다.
   const rows = await db.select().from(consents)
     .where(and(
       eq(consents.userId, userId),
       inArray(consents.consentType, REQUIRED_CONSENTS),
       eq(consents.agreed, true),
-      eq(consents.version, CONSENT_VERSION),
     ));
   const have = new Set(rows.map((r) => r.consentType));
   return REQUIRED_CONSENTS.every((t) => have.has(t));
@@ -556,7 +558,7 @@ export function registerRoutes(app: Express) {
       const userId = (req.user as any).id;
       const { consentTypes } = req.body;
       // 허용 타입만 수용, 버전은 서버 고정(클라이언트 위변조 방지)
-      const ALLOWED = ["service_terms", "pii_collection", "marketing", "third_party_sharing", "privacy_policy"];
+      const ALLOWED = ["service_terms", "pii_collection", "unique_id_collection", "marketing", "third_party_sharing", "privacy_policy"];
       const types = Array.isArray(consentTypes) ? [...new Set(consentTypes)].filter((t) => ALLOWED.includes(t)) : [];
       if (!types.length) {
         return res.status(400).json({ error: "유효한 동의 항목이 필요합니다." });
@@ -778,6 +780,22 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "현재 모집 중이 아닌 사건입니다." });
       }
 
+      // 주민등록번호(고유식별정보)는 별도 동의(개인정보 보호법 제24조의2)가 기록된 경우에만 저장.
+      // 공백만 입력된 경우는 미입력으로 취급(서버 trim).
+      const rrn = typeof residentNumber === "string" ? residentNumber.trim() : "";
+      if (rrn) {
+        const [ridConsent] = await db.select().from(consents)
+          .where(and(
+            eq(consents.userId, userId),
+            eq(consents.consentType, "unique_id_collection"),
+            eq(consents.agreed, true),
+          ))
+          .limit(1);
+        if (!ridConsent) {
+          return res.status(400).json({ error: "주민등록번호 수집에는 별도 동의가 필요합니다(개인정보 보호법 제24조의2)." });
+        }
+      }
+
       const [party] = await db.insert(caseParties).values({
         caseId,
         userId,
@@ -785,7 +803,7 @@ export function registerRoutes(app: Express) {
         phone: phone || (req.user as any).phone,
         email: email || (req.user as any).email,
         address,
-        residentNumber: residentNumber ? encryptPII(residentNumber) : null,
+        residentNumber: rrn ? encryptPII(rrn) : null,
         damageAmount: damageAmount ? parseInt(damageAmount) : null,
         damageDescription,
       }).returning();
