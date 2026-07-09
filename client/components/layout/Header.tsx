@@ -3,7 +3,7 @@ import { useAuth } from "../../hooks/use-auth";
 import { useState } from "react";
 
 export default function Header() {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, isLawyer, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -33,7 +33,11 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <>
-              {isAdmin && <Link to="/admin" className="text-sm text-accent-600 hover:text-accent-700 font-semibold transition-colors whitespace-nowrap">관리</Link>}
+              {isAdmin ? (
+                <Link to="/admin" className="text-sm text-accent-600 hover:text-accent-700 font-semibold transition-colors whitespace-nowrap">관리</Link>
+              ) : isLawyer ? (
+                <Link to="/desk" className="text-sm text-accent-600 hover:text-accent-700 font-semibold transition-colors whitespace-nowrap">변호사 콘솔</Link>
+              ) : null}
               <Link to="/account" className="text-sm text-gray-600 hover:text-primary-600 transition-colors">{user.name}님</Link>
               <button onClick={logout} className="btn-secondary text-xs px-3 py-1.5">로그아웃</button>
             </>
@@ -66,7 +70,11 @@ export default function Header() {
           <Link to="/faq" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>자주 묻는 질문</Link>
           {user && <Link to="/my" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>내 사건</Link>}
           {user && <Link to="/account" className="block py-2 text-sm" onClick={() => setMenuOpen(false)}>내 정보</Link>}
-          {isAdmin && <Link to="/admin" className="block py-2 text-sm text-accent-600 font-semibold" onClick={() => setMenuOpen(false)}>관리</Link>}
+          {isAdmin ? (
+            <Link to="/admin" className="block py-2 text-sm text-accent-600 font-semibold" onClick={() => setMenuOpen(false)}>관리</Link>
+          ) : isLawyer ? (
+            <Link to="/desk" className="block py-2 text-sm text-accent-600 font-semibold" onClick={() => setMenuOpen(false)}>변호사 콘솔</Link>
+          ) : null}
           <div className="pt-2 border-t flex gap-2">
             {user ? (
               <button onClick={() => { logout(); setMenuOpen(false); }} className="btn-secondary text-xs w-full">로그아웃</button>

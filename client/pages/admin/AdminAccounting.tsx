@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "../../lib/queryClient";
-import AdminNav from "../../components/AdminNav";
 
 const won = (n: number) => `${Math.round((n || 0) / 10000).toLocaleString()}만원`;
 const wonExact = (n: number) => `${(n || 0).toLocaleString()}원`;
@@ -69,8 +68,7 @@ export default function AdminAccounting() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <AdminNav />
+    <div>
       <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
         <h1 className="text-2xl md:text-3xl font-bold">회계 · 정산</h1>
         <div className="flex items-center gap-2 flex-wrap">

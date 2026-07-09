@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../hooks/use-auth";
 import { apiRequest, queryClient } from "../lib/queryClient";
 import { usePageMeta } from "../hooks/use-page-meta";
-import MemberTabs from "../components/MemberTabs";
 
 const inputCls =
   "w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500";
@@ -76,8 +75,7 @@ export default function Account() {
   const linkedBy = (key: string) => (social?.linked || []).find((l) => l.provider === key);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <MemberTabs />
+    <div>
       <h1 className="text-2xl font-extrabold text-ink mb-1">내 정보</h1>
       <p className="text-sm text-ink-muted mb-6">기본 정보·비밀번호·간편인증 연결을 관리합니다.</p>
 

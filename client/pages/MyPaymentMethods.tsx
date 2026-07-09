@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "../lib/queryClient";
 import { usePageMeta } from "../hooks/use-page-meta";
-import MemberTabs from "../components/MemberTabs";
 
 const fmt = (d?: string) => (d ? new Date(d).toLocaleDateString("ko-KR") : "-");
 
@@ -25,8 +24,7 @@ export default function MyPaymentMethods() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <MemberTabs />
+    <div>
       <h1 className="text-2xl font-extrabold text-ink mb-1">결제수단 관리</h1>
       <p className="text-sm text-ink-muted mb-6">성공보수 자동결제 등에 사용할 카드입니다. 카드 정보는 결제대행사(NicePay)에 안전하게 보관되며 플랫폼에는 저장되지 않습니다.</p>
       {msg && <p className={`text-sm mb-4 ${msg.ok ? "text-primary-700" : "text-red-600"}`}>{msg.text}</p>}

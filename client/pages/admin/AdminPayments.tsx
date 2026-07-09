@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/queryClient";
-import AdminNav from "../../components/AdminNav";
 
 const TYPE: Record<string, string> = { retainer: "착수금", payment_order: "지급명령", seizure: "가압류" };
 const STATUS: Record<string, string> = { completed: "완료", pending: "대기", failed: "실패", refunded: "환불" };
@@ -29,8 +28,7 @@ export default function AdminPayments() {
   const won = (n: number) => `${Math.round((n || 0) / 10000).toLocaleString()}만원`;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <AdminNav />
+    <div>
       <h1 className="text-2xl md:text-3xl font-bold mb-6">결제 관리</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">

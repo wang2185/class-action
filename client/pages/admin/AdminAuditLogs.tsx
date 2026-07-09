@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/queryClient";
-import AdminNav from "../../components/AdminNav";
 
 const ACTION_LABELS: Record<string, string> = {
   view_parties: "당사자 조회", view_defendants: "상대방 조회", view_evidence: "증거 조회",
@@ -27,8 +26,7 @@ export default function AdminAuditLogs() {
   }, [logs, q, action]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <AdminNav />
+    <div>
       <h1 className="text-2xl md:text-3xl font-bold mb-6">감사 로그</h1>
       <div className="card">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">

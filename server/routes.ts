@@ -527,6 +527,49 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // 소셜/간편가입 프로필 완성 — 생년월일·배송지주소(필수) 저장. 소셜 로그인 후 /welcome 게이트에서 호출.
+  // 검증은 이메일 가입(/api/auth/register)과 동일(YYYY-MM-DD 실재일·미래금지·만14세·우편번호·기본주소 필수).
+  app.post("/api/auth/complete-profile", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { birthDate, postalCode, addressLine1, addressLine2 } = req.body || {};
+      // 생년월일(필수): 'YYYY-MM-DD' 형식 · 실재일 · 미래일 금지 · 만 14세 이상
+      const birth = String(birthDate || "").trim();
+      const birthM = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birth);
+      if (!birthM) return res.status(400).json({ error: "생년월일을 YYYY-MM-DD 형식으로 입력해주세요." });
+      const by = Number(birthM[1]), bmo = Number(birthM[2]), bd = Number(birthM[3]);
+      const birthMs = Date.UTC(by, bmo - 1, bd);
+      const bdt = new Date(birthMs);
+      if (bdt.getUTCFullYear() !== by || bdt.getUTCMonth() !== bmo - 1 || bdt.getUTCDate() !== bd) {
+        return res.status(400).json({ error: "올바른 생년월일을 입력해주세요." });
+      }
+      const now = new Date();
+      const todayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      if (birthMs > todayMs) return res.status(400).json({ error: "생년월일이 미래일 수 없습니다." });
+      const turns14Ms = Date.UTC(by + 14, bmo - 1, bd);
+      if (turns14Ms > todayMs) return res.status(400).json({ error: "만 14세 이상만 가입할 수 있습니다." });
+      // 배송지주소(우편번호·기본주소 필수, 상세주소 선택)
+      const postal = String(postalCode || "").trim();
+      const addr1 = String(addressLine1 || "").trim();
+      const addr2 = String(addressLine2 || "").trim();
+      if (!postal) return res.status(400).json({ error: "우편번호를 입력해주세요." });
+      if (!addr1) return res.status(400).json({ error: "기본주소를 입력해주세요." });
+
+      const [updated] = await db.update(users).set({
+        birthDate: birth,
+        postalCode: postal.slice(0, 10),
+        addressLine1: addr1.slice(0, 255),
+        addressLine2: addr2.slice(0, 255) || null,
+      }).where(eq(users.id, userId)).returning();
+      if (!updated) return res.status(404).json({ error: "사용자를 찾을 수 없습니다." });
+      const { password: _, ...safe } = updated;
+      return res.json(safe);
+    } catch (err) {
+      console.error("프로필 완성 오류:", err);
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
   // 비밀번호 변경(현재 비밀번호 확인 후)
   app.post("/api/auth/change-password", requireAuth, async (req, res) => {
     try {

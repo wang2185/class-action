@@ -8,6 +8,11 @@ type User = {
   name: string;
   phone?: string;
   role: string;
+  // 프로필 완성 게이트 판정용 — /api/auth/me(safeUser)가 반환. 소셜/기존 가입은 null 가능.
+  birthDate?: string | null;
+  postalCode?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
 };
 
 type AuthContext = {

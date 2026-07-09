@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../lib/queryClient";
 import { usePageMeta } from "../hooks/use-page-meta";
-import MemberTabs from "../components/MemberTabs";
 
 const STATUS_LABELS: Record<string, string> = {
   recruiting: "모집중", filed: "소 제기", in_progress: "진행중", settled: "합의", closed: "종결",
@@ -51,8 +50,7 @@ export default function MyCases() {
   const todoList = list.map((it) => ({ ...it, action: nextAction(it.party, it.case) })).filter((it) => it.action);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <MemberTabs />
+    <div>
       <h1 className="text-2xl md:text-3xl font-bold mb-6">내 사건</h1>
 
       {!isLoading && list.length > 0 && (

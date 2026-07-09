@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../lib/queryClient";
 import { usePageMeta } from "../hooks/use-page-meta";
-import MemberTabs from "../components/MemberTabs";
 
 const CH: Record<string, string> = { sms: "문자", email: "이메일", alimtalk: "알림톡" };
 function label(k: string): string {
@@ -20,8 +19,7 @@ export default function MyNotifications() {
   const { data: list, isLoading } = useQuery<any[]>({ queryKey: ["myNotifications"], queryFn: () => apiRequest("/api/my/notifications") });
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <MemberTabs />
+    <div>
       <h1 className="text-2xl font-extrabold text-ink mb-6">알림</h1>
 
       {isLoading ? (

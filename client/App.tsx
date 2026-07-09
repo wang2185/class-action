@@ -16,13 +16,6 @@ import CaseProgress from "./pages/CaseProgress";
 import PaymentOrderForm from "./pages/PaymentOrderForm";
 import SeizureForm from "./pages/SeizureForm";
 import BillingKeyRegister from "./pages/BillingKeyRegister";
-import AdminDashboard from "./pages/admin/Dashboard";
-import AdminCaseForm from "./pages/admin/CaseForm";
-import AdminParties from "./pages/admin/Parties";
-import AdminCaseUpdate from "./pages/admin/CaseUpdateForm";
-import AdminDefendants from "./pages/admin/Defendants";
-import CasePackage from "./pages/admin/CasePackage";
-import AdminCaseRequests from "./pages/admin/CaseRequests";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Consent from "./pages/Consent";
@@ -35,19 +28,46 @@ import Account from "./pages/Account";
 import MyPayments from "./pages/MyPayments";
 import MyPaymentMethods from "./pages/MyPaymentMethods";
 import MyNotifications from "./pages/MyNotifications";
-import AdminPayments from "./pages/admin/AdminPayments";
-import AdminAccounting from "./pages/admin/AdminAccounting";
-import AdminCoupons from "./pages/admin/AdminCoupons";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
-import Owner from "./pages/admin/Owner";
 import RouteMeta from "./components/RouteMeta";
 
+// ── 콘솔 레이아웃(좌측 사이드바) ──
+import MemberConsole from "./components/console/MemberConsole";
+import LawyerConsole from "./components/console/LawyerConsole";
+import AdminConsole from "./components/console/AdminConsole";
+
+// ── 변호사 콘솔 페이지 ──
+import LawyerDashboard from "./pages/lawyer/LawyerDashboard";
+import LawyerCases from "./pages/lawyer/LawyerCases";
+import LawyerDocuments from "./pages/lawyer/LawyerDocuments";
+
+// ── 관리자 페이지 ──
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminCases from "./pages/admin/AdminCases";
+import AdminCaseForm from "./pages/admin/CaseForm";
+import AdminParties from "./pages/admin/Parties";
+import AdminCaseUpdate from "./pages/admin/CaseUpdateForm";
+import AdminDefendants from "./pages/admin/Defendants";
+import CasePackage from "./pages/admin/CasePackage";
+import AdminCaseRequests from "./pages/admin/CaseRequests";
+import AdminPayments from "./pages/admin/AdminPayments";
+import AdminAccounting from "./pages/admin/AdminAccounting";
+import AdminPricing from "./pages/admin/AdminPricing";
+import AdminMembers from "./pages/admin/AdminMembers";
+import AdminLawyers from "./pages/admin/AdminLawyers";
+import AdminAuditLogs from "./pages/admin/AdminAuditLogs";
+import Owner from "./pages/admin/Owner";
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isAdmin, isLawyer } = useAuth();
   const location = useLocation();
   if (isLoading) return <div className="flex items-center justify-center min-h-screen">로딩 중…</div>;
   if (!user) return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  // 프로필 완성 게이트: 생년월일·주소가 비어 있으면 완성 페이지로 강제(소셜/기존 회원 포함).
+  // 소송·계약 서면 발송에 필요. /welcome 자신·운영진(admin/lawyer)은 제외(락아웃·루프 방지).
+  const profileIncomplete = !user.birthDate || !user.postalCode || !user.addressLine1;
+  if (profileIncomplete && !isAdmin && !isLawyer && location.pathname !== "/welcome") {
+    return <Navigate to="/welcome" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -84,6 +104,7 @@ export default function App() {
           <Header />
           <main className="flex-1">
             <Routes>
+              {/* ── 공개 ── */}
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -97,13 +118,8 @@ export default function App() {
               <Route path="/terms" element={<Terms />} />
               <Route path="/consent" element={<Consent />} />
 
-              {/* 로그인 필수 */}
+              {/* ── 로그인 필수: 프로필 완성 · 사건 진행 플로우 ── */}
               <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
-              <Route path="/my" element={<ProtectedRoute><MyCases /></ProtectedRoute>} />
-              <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-              <Route path="/my/payments" element={<ProtectedRoute><MyPayments /></ProtectedRoute>} />
-              <Route path="/my/payment-methods" element={<ProtectedRoute><MyPaymentMethods /></ProtectedRoute>} />
-              <Route path="/my/notifications" element={<ProtectedRoute><MyNotifications /></ProtectedRoute>} />
               <Route path="/cases/:id/join" element={<ProtectedRoute><JoinCase /></ProtectedRoute>} />
               <Route path="/cases/:id/contract" element={<ProtectedRoute><Contract /></ProtectedRoute>} />
               <Route path="/cases/:id/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
@@ -114,21 +130,45 @@ export default function App() {
               <Route path="/payment/success" element={<PaymentResult type="success" />} />
               <Route path="/payment/fail" element={<PaymentResult type="fail" />} />
 
-              {/* 관리자 */}
-              <Route path="/owner" element={<OwnerRoute><Owner /></OwnerRoute>} />
-              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              {/* ── 회원 콘솔 ── */}
+              <Route element={<ProtectedRoute><MemberConsole /></ProtectedRoute>}>
+                <Route path="/my" element={<MyCases />} />
+                <Route path="/account" element={<Account />} />
+                <Route path="/my/payments" element={<MyPayments />} />
+                <Route path="/my/payment-methods" element={<MyPaymentMethods />} />
+                <Route path="/my/notifications" element={<MyNotifications />} />
+              </Route>
+
+              {/* ── 변호사 콘솔 ── */}
+              <Route element={<LawyerRoute><LawyerConsole /></LawyerRoute>}>
+                <Route path="/desk" element={<LawyerDashboard />} />
+                <Route path="/desk/requests" element={<AdminCaseRequests />} />
+                <Route path="/desk/cases" element={<LawyerCases />} />
+                <Route path="/desk/documents" element={<LawyerDocuments />} />
+                <Route path="/desk/payments" element={<AdminPayments />} />
+              </Route>
+
+              {/* ── 관리자 콘솔 ── */}
+              <Route element={<AdminRoute><AdminConsole /></AdminRoute>}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/owner" element={<OwnerRoute><Owner /></OwnerRoute>} />
+                <Route path="/admin/cases" element={<AdminCases />} />
+                <Route path="/admin/requests" element={<AdminCaseRequests />} />
+                <Route path="/admin/pricing" element={<AdminPricing />} />
+                <Route path="/admin/payments" element={<AdminPayments />} />
+                <Route path="/admin/accounting" element={<AdminAccounting />} />
+                <Route path="/admin/members" element={<AdminMembers />} />
+                <Route path="/admin/lawyers" element={<AdminLawyers />} />
+                <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
+              </Route>
+
+              {/* ── 관리자 사건 서브플로우(단독 화면) ── */}
               <Route path="/admin/cases/new" element={<AdminRoute><AdminCaseForm /></AdminRoute>} />
               <Route path="/admin/cases/:id/edit" element={<AdminRoute><AdminCaseForm /></AdminRoute>} />
               <Route path="/admin/cases/:id/parties" element={<AdminRoute><AdminParties /></AdminRoute>} />
               <Route path="/admin/cases/:id/update" element={<AdminRoute><AdminCaseUpdate /></AdminRoute>} />
               <Route path="/admin/cases/:id/defendants" element={<AdminRoute><AdminDefendants /></AdminRoute>} />
               <Route path="/admin/cases/:id/package" element={<LawyerRoute><CasePackage /></LawyerRoute>} />
-              <Route path="/admin/case-requests" element={<AdminRoute><AdminCaseRequests /></AdminRoute>} />
-              <Route path="/admin/payments" element={<AdminRoute><AdminPayments /></AdminRoute>} />
-              <Route path="/admin/accounting" element={<AdminRoute><AdminAccounting /></AdminRoute>} />
-              <Route path="/admin/coupons" element={<AdminRoute><AdminCoupons /></AdminRoute>} />
-              <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-              <Route path="/admin/audit-logs" element={<AdminRoute><AdminAuditLogs /></AdminRoute>} />
             </Routes>
           </main>
           <Footer />

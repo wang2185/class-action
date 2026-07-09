@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "../../lib/queryClient";
-import AdminNav from "../../components/AdminNav";
 
 const STATUS_LABELS: Record<string, string> = { recruiting: "모집중", filed: "소 제기", in_progress: "진행중", settled: "합의", closed: "종결" };
 const ROLE_LABELS: Record<string, string> = { member: "회원", lawyer: "변호사", admin: "관리자", owner: "오너" };
@@ -24,22 +23,22 @@ export default function Owner() {
     { label: "회원", value: sumv(us), sub: `사건요청 ${sumv(rs)}건`, color: "text-purple-600" },
   ];
   const links = [
-    { to: "/admin", title: "업무관리", desc: "사건·당사자·경과 관리" },
+    { to: "/admin/cases", title: "전체 사건 관리", desc: "사건·당사자·경과 관리" },
     { to: "/admin/payments", title: "결제 관리", desc: "거래·정산" },
-    { to: "/admin/users", title: "사용자·권한", desc: "역할 부여(오너)" },
+    { to: "/admin/lawyers", title: "변호사 회원", desc: "역할 부여(오너)" },
+    { to: "/admin/members", title: "회원 관리", desc: "회원 정보·탈퇴" },
     { to: "/admin/audit-logs", title: "감사 로그", desc: "개인정보 접근 이력" },
-    { to: "/admin/case-requests", title: "사건 요청함", desc: "제보 검토·사건화" },
+    { to: "/admin/requests", title: "사건 요청함", desc: "제보 검토·사건화" },
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <AdminNav />
+    <div>
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">관리자 콘솔</h1>
-          <p className="text-sm text-gray-500 mt-1">법무법인 윈스 · 경영 현황과 최상위 관리(오너)</p>
+          <h1 className="text-2xl md:text-3xl font-bold">경영 현황</h1>
+          <p className="text-sm text-gray-500 mt-1">법무법인 윈스 · 경영 지표와 최상위 관리(오너)</p>
         </div>
-        <Link to="/admin" className="btn-secondary">업무관리</Link>
+        <Link to="/admin" className="btn-secondary">대시보드</Link>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
