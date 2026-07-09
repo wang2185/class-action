@@ -44,14 +44,14 @@ export default function LawyerDashboard() {
         ))}
       </div>
 
-      {/* 준비 중 안내 */}
-      <div className="card border-dashed border-gray-300 bg-gray-50/50">
+      {/* AI 초기검토 · 수임 심사 안내 */}
+      <Link to="/desk/requests" className="card block border-primary-100 hover:border-primary-300 hover:bg-primary-50/40 transition-colors">
         <div className="flex items-center gap-2 mb-1">
-          <span className="badge bg-gray-200 text-gray-600">준비 중</span>
+          <span className="badge bg-primary-100 text-primary-700">신규</span>
           <h2 className="font-bold text-ink">사건 초기 검토(AI) · 수임 심사</h2>
         </div>
-        <p className="text-sm text-gray-500">신청 사건의 AI 초기 검토와 수임 여부(승인) 심사 기능은 다음 단계에서 추가됩니다.</p>
-      </div>
+        <p className="text-sm text-gray-500">신청 사건에서 <span className="text-primary-600">AI 초기검토</span>로 유형·쟁점·수임 권고를 확인하고, 수임 여부(승인·반려)를 심사할 수 있습니다. →</p>
+      </Link>
     </div>
   );
 }

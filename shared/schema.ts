@@ -332,6 +332,14 @@ export const caseRequests = pgTable("case_requests", {
   status: varchar("status", { length: 30 }).notNull().default("new"),
   // new(접수) → reviewing(검토중) → accepted(채택·개설예정) → declined(반려) → converted(사건개설완료)
   adminNote: text("admin_note"), // 내부 메모
+  // ─ AI 초기검토(사건 유형·수임 권고 등, 변호사 심사 보조) ─
+  aiReviewStatus: varchar("ai_review_status", { length: 20 }).notNull().default("none"), // none | pending | done | failed
+  aiReview: text("ai_review"), // JSON: { caseType, viability, recommendation, summary, keyIssues[], cautions[], rationale }
+  aiReviewedAt: timestamp("ai_reviewed_at"),
+  // ─ 변호사 수임 결정(승인/반려) ─ status(accepted/declined)와 함께 기록 ─
+  decidedBy: integer("decided_by").references(() => users.id), // 결정한 변호사
+  decidedAt: timestamp("decided_at"),
+  decisionReason: text("decision_reason"), // 반려/승인 사유(선택)
   userId: integer("user_id"), // 로그인 상태로 제출 시(선택)
   ipAddress: varchar("ip_address", { length: 45 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),

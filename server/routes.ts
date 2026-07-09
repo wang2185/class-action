@@ -13,6 +13,7 @@ import { eq, desc, and, sql, count, inArray, gte, lte, isNull } from "drizzle-or
 import ExcelJS from "exceljs";
 import { requireAuth, requireAdmin, requireLawyer, requireOwner, hashPassword, comparePassword, loginWithSessionRegeneration } from "./auth";
 import { encryptPII, decryptPII } from "./crypto";
+import { runAiReview, AiReviewError } from "./aiReview";
 import { upload, deleteFile } from "./storage";
 import { assembleDossier, buildPackageZip } from "./casePackage";
 import { sendSMS, sendEmail, notifyParty, mapWithConcurrency } from "./notify";
@@ -123,7 +124,7 @@ async function notifyCaseParties(caseId: number, update: { id: number; title: st
 
 // 새 사건 요청(제보) 접수 시 윈스(허왕)에게 알림. ADMIN_ALERT_PHONE(SMS)+ADMIN_ALERT_EMAIL(메일).
 async function notifyNewCaseRequest(reqId: number, data: { name: string; phone: string; email?: string | null; title: string; category?: string | null; opponent?: string | null }) {
-  const adminUrl = `${PUBLIC_BASE}/admin/case-requests`;
+  const adminUrl = `${PUBLIC_BASE}/admin/requests`;
   const ctx = { templateKey: "case_request_new", dedupeKey: `case_request:${reqId}` };
   const smsText = `[로사이어티] 새 사건 요청 접수\n${oneLine(data.title)}\n요청자: ${oneLine(data.name)}\n확인: ${adminUrl}`;
   const adminPhone = process.env.ADMIN_ALERT_PHONE;
@@ -2893,6 +2894,68 @@ export function registerRoutes(app: Express) {
       res.json(updated);
     } catch (e) {
       res.status(500).json({ error: "수정 실패" });
+    }
+  });
+
+  // AI 초기검토 실행 (변호사) — 동기 호출, 결과를 case_requests에 저장
+  app.post("/api/admin/case-requests/:id/ai-review", requireLawyer, async (req, res) => {
+    try {
+      const id = pid(req);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const [row] = await db.select().from(caseRequests).where(eq(caseRequests.id, id)).limit(1);
+      if (!row) return res.status(404).json({ error: "요청을 찾을 수 없습니다." });
+
+      let result;
+      try {
+        result = await runAiReview(row);
+      } catch (e) {
+        await db.update(caseRequests).set({ aiReviewStatus: "failed" }).where(eq(caseRequests.id, id));
+        if (e instanceof AiReviewError) return res.status(e.status).json({ error: e.message });
+        throw e;
+      }
+      const [updated] = await db.update(caseRequests)
+        .set({ aiReviewStatus: "done", aiReview: JSON.stringify(result), aiReviewedAt: new Date() })
+        .where(eq(caseRequests.id, id)).returning();
+      await logAudit(req, "ai_review_case_request", "case_requests", id, result.recommendation);
+      res.json(updated);
+    } catch (e) {
+      console.error("AI 초기검토 오류:", e);
+      res.status(500).json({ error: "AI 검토 실패" });
+    }
+  });
+
+  // 변호사 수임 결정 (승인/반려) — status(accepted/declined) + 결정자·시각·사유 기록
+  app.post("/api/admin/case-requests/:id/decision", requireLawyer, async (req, res) => {
+    try {
+      const id = pid(req);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: "잘못된 요청" });
+      const decision = req.body?.decision;
+      if (decision !== "accepted" && decision !== "declined") return res.status(400).json({ error: "decision은 accepted 또는 declined 여야 합니다." });
+      const reason = typeof req.body?.reason === "string" ? req.body.reason.slice(0, 2000) : null;
+      const [before] = await db.select().from(caseRequests).where(eq(caseRequests.id, id)).limit(1);
+      if (!before) return res.status(404).json({ error: "요청을 찾을 수 없습니다." });
+      if (before.status === "converted") return res.status(409).json({ error: "이미 사건으로 개설된 요청입니다." });
+
+      // 원자적 전환: 직전 상태가 그대로일 때만 적용(동시 결정·개설 경합 시 덮어쓰기·중복알림 방지)
+      const [updated] = await db.update(caseRequests).set({
+        status: decision,
+        decidedBy: (req.user as any).id,
+        decidedAt: new Date(),
+        decisionReason: reason,
+      }).where(and(eq(caseRequests.id, id), eq(caseRequests.status, before.status))).returning();
+      if (!updated) {
+        // 동시 변경(개설·다른 결정)이 이미 반영됨 → 최신값 반환, 중복 알림 없음
+        const [cur] = await db.select().from(caseRequests).where(eq(caseRequests.id, id)).limit(1);
+        return res.json(cur || before);
+      }
+      await logAudit(req, "decide_case_request", "case_requests", id, decision);
+      // 수임 승인 시 신청자 1회 안내(이미 accepted였다면 중복 발송 없음)
+      if (decision === "accepted" && before.status !== "accepted") {
+        notifyCaseRequester(updated, "accepted").catch((e) => console.error("사건요청 신청자 알림 오류:", e));
+      }
+      res.json(updated);
+    } catch (e) {
+      res.status(500).json({ error: "결정 저장 실패" });
     }
   });
 
