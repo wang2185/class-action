@@ -1,6 +1,8 @@
 import { type Express, type Request, type Response } from "express";
 import passport from "passport";
 import crypto from "crypto";
+import path from "path";
+import fs from "fs";
 import rateLimit from "express-rate-limit";
 import { db } from "./db";
 import {
@@ -94,7 +96,7 @@ function maskRecipient(r: string): string {
 }
 
 // 사건 경과를 당사자 전원에게 발송(소송개시 자동알림). notify.ts 팬아웃, 동시성 캡.
-async function notifyCaseParties(caseId: number, update: { id: number; title: string; content: string; updateType: string }, nonce?: number) {
+export async function notifyCaseParties(caseId: number, update: { id: number; title: string; content: string; updateType: string }, nonce?: number) {
   const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
   const parties = await db.select().from(caseParties).where(eq(caseParties.caseId, caseId));
   if (!parties.length) return;
@@ -164,7 +166,7 @@ async function notifyCaseRequestReceived(reqRow: { id: number; name: string; pho
 }
 
 // 사건 요청 신청자에게 처리 결과 안내(채택/개설 시). 멱등(상태별 1회). 거래성 통지.
-async function notifyCaseRequester(reqRow: any, status: string) {
+export async function notifyCaseRequester(reqRow: any, status: string) {
   const title = oneLine(reqRow.title || "사건 요청");
   const link = `${PUBLIC_BASE}/cases`;
   const ctx = { templateKey: `case_request_${status}`, dedupeKey: `case_request_status:${reqRow.id}:${status}` };
@@ -794,6 +796,55 @@ export function registerRoutes(app: Express) {
 
       return res.json(updates);
     } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 사건 경과 첨부파일 다운로드
+  // 권한은 위 목록 조회(/api/cases/:id/updates)와 정확히 같은 규칙:
+  // 관리자는 전부, 그 외에는 해당 사건 당사자 + 공개(isPublic) 경과만.
+  // 업로드물은 정적 서빙하지 않으므로(server/index.ts 참고) 이 라우트가 유일한 반출 경로다.
+  app.get("/api/cases/:id/updates/:updateId/attachment", requireAuth, async (req, res) => {
+    try {
+      const caseId = parseInt(req.params.id, 10);
+      const updateId = parseInt(req.params.updateId, 10);
+      if (!Number.isInteger(caseId) || !Number.isInteger(updateId)) {
+        return res.status(400).json({ error: "잘못된 요청입니다." });
+      }
+      const userId = (req.user as any).id;
+      const isAdmin = (req.user as any).role === "admin";
+
+      const [u] = await db
+        .select()
+        .from(caseUpdates)
+        .where(and(eq(caseUpdates.id, updateId), eq(caseUpdates.caseId, caseId)))
+        .limit(1);
+      if (!u || !u.attachmentPath) return res.status(404).json({ error: "첨부파일이 없습니다." });
+
+      if (!isAdmin) {
+        const [party] = await db
+          .select()
+          .from(caseParties)
+          .where(and(eq(caseParties.caseId, caseId), eq(caseParties.userId, userId)))
+          .limit(1);
+        if (!party) return res.status(403).json({ error: "해당 사건의 당사자가 아닙니다." });
+        if (!u.isPublic) return res.status(403).json({ error: "열람 권한이 없습니다." });
+      }
+
+      // DB 값이 오염되더라도 업로드 루트 밖 파일은 절대 내보내지 않는다.
+      const uploadRoot = path.resolve(process.env.UPLOAD_DIR || "./public/uploads");
+      const abs = path.resolve(u.attachmentPath);
+      if (abs !== uploadRoot && !abs.startsWith(uploadRoot + path.sep)) {
+        console.error("첨부 경로 이탈 차단:", u.attachmentPath);
+        return res.status(403).json({ error: "열람 권한이 없습니다." });
+      }
+      if (!fs.existsSync(abs)) return res.status(404).json({ error: "파일을 찾을 수 없습니다." });
+
+      // 인라인 렌더 차단(저장형 XSS 방지). res.download 가 Content-Disposition: attachment 를 설정한다.
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      return res.download(abs, u.attachmentName || path.basename(abs));
+    } catch (err) {
+      console.error("첨부 다운로드 오류:", err);
       return res.status(500).json({ error: "서버 오류" });
     }
   });
