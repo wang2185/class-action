@@ -37,7 +37,7 @@ export default {
         porcelain: "#F6FCFD",
       },
       fontFamily: {
-        sans: ["Pretendard", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        sans: ["Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
       },
       boxShadow: {
         soft: "0 1px 2px rgba(18,48,58,0.04), 0 10px 30px -14px rgba(15,166,184,0.20)",

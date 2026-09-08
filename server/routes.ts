@@ -269,6 +269,22 @@ function stripPII(obj: any): any {
   return safe;
 }
 
+// 동의 허용 타입(클라이언트 위변조 방지). /api/consent·join·withdraw 공용.
+const CONSENT_ALLOWED = ["service_terms", "pii_collection", "unique_id_collection", "marketing", "third_party_sharing", "privacy_policy"];
+
+// 주민등록번호 검증 — 13자리 + 월/일 범위 + 체크섬. 통과 시 하이픈 제거한 13자리 반환, 실패 시 null.
+const RRN_WEIGHTS = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5];
+function validateRrn(raw: string): string | null {
+  const d = raw.replace(/\D/g, "");
+  if (!/^\d{13}$/.test(d)) return null;
+  const mm = Number(d.slice(2, 4)), dd = Number(d.slice(4, 6));
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += Number(d[i]) * RRN_WEIGHTS[i];
+  const check = (11 - (sum % 11)) % 10;
+  return check === Number(d[12]) ? d : null;
+}
+
 // 라우트 :id 파라미터 → 정수(없거나 비정수면 NaN). (req.params.id 는 string|string[] 타입)
 function pid(req: Request): number {
   return parseInt(String(req.params.id), 10);
@@ -604,8 +620,7 @@ export function registerRoutes(app: Express) {
       const userId = (req.user as any).id;
       const { consentTypes } = req.body;
       // 허용 타입만 수용, 버전은 서버 고정(클라이언트 위변조 방지)
-      const ALLOWED = ["service_terms", "pii_collection", "unique_id_collection", "marketing", "third_party_sharing", "privacy_policy"];
-      const types = Array.isArray(consentTypes) ? [...new Set(consentTypes)].filter((t) => ALLOWED.includes(t)) : [];
+      const types = Array.isArray(consentTypes) ? [...new Set(consentTypes)].filter((t) => CONSENT_ALLOWED.includes(t)) : [];
       if (!types.length) {
         return res.status(400).json({ error: "유효한 동의 항목이 필요합니다." });
       }
@@ -634,6 +649,29 @@ export function registerRoutes(app: Express) {
       const userId = (req.user as any).id;
       const list = await db.select().from(consents).where(eq(consents.userId, userId)).orderBy(desc(consents.createdAt));
       return res.json(list);
+    } catch (err) {
+      return res.status(500).json({ error: "서버 오류" });
+    }
+  });
+
+  // 동의 철회 (개인정보보호법 제37조) — 철회 사실을 append-only 로 기록(agreed=false). 데이터 삭제는 /api/user/delete.
+  app.post("/api/consent/withdraw", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { consentType, caseId } = req.body;
+      if (typeof consentType !== "string" || !CONSENT_ALLOWED.includes(consentType)) {
+        return res.status(400).json({ error: "유효한 동의 항목이 필요합니다." });
+      }
+      await db.insert(consents).values({
+        userId,
+        caseId: Number.isInteger(caseId) ? caseId : null,
+        consentType,
+        version: CONSENT_VERSION,
+        agreed: false,
+        ipAddress: req.ip || req.headers["x-forwarded-for"]?.toString() || "",
+        userAgent: req.headers["user-agent"] || "",
+      });
+      return res.json({ ok: true });
     } catch (err) {
       return res.status(500).json({ error: "서버 오류" });
     }
@@ -729,11 +767,12 @@ export function registerRoutes(app: Express) {
   // ═══════════════════════════════════════════
   app.get("/api/cases", async (req, res) => {
     try {
+      // 무인증 공개 목록 — 장문 description 은 상세(/api/cases/:id)에서만. 나머지 필드는 관리자 콘솔도 이 응답을 재사용.
       const allCases = await db
         .select()
         .from(cases)
         .orderBy(desc(cases.createdAt));
-      return res.json(allCases);
+      return res.json(allCases.map(({ description, ...c }) => c));
     } catch (err) {
       console.error("사건 목록 오류:", err);
       return res.status(500).json({ error: "서버 오류" });
@@ -852,11 +891,20 @@ export function registerRoutes(app: Express) {
   // ═══════════════════════════════════════════
   // 당사자 참여 API
   // ═══════════════════════════════════════════
-  app.post("/api/cases/:id/join", requireAuth, requireConsent, async (req, res) => {
+  // requireConsent(계정단위 전역 게이트) 제거 — 이 라우트가 요청 본문 동의를 사건 단위로 직접 검증한다.
+  app.post("/api/cases/:id/join", requireAuth, async (req, res) => {
     try {
       const caseId = parseInt(req.params.id);
       const userId = (req.user as any).id;
       const { name, phone, email, address, residentNumber, damageAmount, damageDescription } = req.body;
+
+      // 동의(사건 귀속) — 이번 요청에 실린 플래그가 정본. 사건 단위로 기록한다.
+      const consentTypes: string[] = Array.isArray(req.body.consents)
+        ? [...new Set(req.body.consents)].filter((t) => CONSENT_ALLOWED.includes(t))
+        : [];
+      if (!consentTypes.includes("pii_collection")) {
+        return res.status(400).json({ error: "개인정보 수집·이용 동의가 필요합니다." });
+      }
 
       // 이미 참여 여부 확인
       const existing = await db
@@ -875,39 +923,59 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ error: "현재 모집 중이 아닌 사건입니다." });
       }
 
-      // 주민등록번호(고유식별정보)는 별도 동의(개인정보 보호법 제24조의2)가 기록된 경우에만 저장.
-      // 공백만 입력된 경우는 미입력으로 취급(서버 trim).
+      // 주민등록번호(고유식별정보): 이번 요청 동의(사건 단위)가 있어야 하고, 형식·체크섬을 통과해야 저장.
       const rrn = typeof residentNumber === "string" ? residentNumber.trim() : "";
+      let rrnEnc: string | null = null;
       if (rrn) {
-        const [ridConsent] = await db.select().from(consents)
-          .where(and(
-            eq(consents.userId, userId),
-            eq(consents.consentType, "unique_id_collection"),
-            eq(consents.agreed, true),
-          ))
-          .limit(1);
-        if (!ridConsent) {
+        if (!consentTypes.includes("unique_id_collection")) {
           return res.status(400).json({ error: "주민등록번호 수집에는 별도 동의가 필요합니다(개인정보 보호법 제24조의2)." });
         }
+        const norm = validateRrn(rrn);
+        if (!norm) return res.status(400).json({ error: "주민등록번호 형식이 올바르지 않습니다." });
+        rrnEnc = encryptPII(norm);
       }
 
-      const [party] = await db.insert(caseParties).values({
-        caseId,
-        userId,
-        name: name || (req.user as any).name,
-        phone: phone || (req.user as any).phone,
-        email: email || (req.user as any).email,
-        address,
-        residentNumber: rrn ? encryptPII(rrn) : null,
-        damageAmount: damageAmount ? parseInt(damageAmount) : null,
-        damageDescription,
-      }).returning();
+      // 피해 금액: 신뢰경계 검증(숫자 15자리 이하). type=number 의 "1e5"→parseInt=1 왜곡 차단.
+      let damageAmountVal: number | null = null;
+      const daRaw = damageAmount == null ? "" : String(damageAmount).trim();
+      if (daRaw !== "") {
+        if (!/^\d{1,15}$/.test(daRaw)) {
+          return res.status(400).json({ error: "피해 금액은 숫자만 입력해주세요(최대 15자리)." });
+        }
+        damageAmountVal = Number(daRaw);
+      }
 
-      // 참여자 수 업데이트
-      await db
-        .update(cases)
-        .set({ currentCount: sql`${cases.currentCount} + 1` })
-        .where(eq(cases.id, caseId));
+      const ip = req.ip || req.headers["x-forwarded-for"]?.toString() || "";
+      const ua = req.headers["user-agent"] || "";
+      // 동의 기록 + 당사자 등록을 한 트랜잭션으로(동의만 남고 참여 실패하는 상태 방지).
+      // 동시 요청 경합은 case_parties(case_id,user_id) 유니크로 차단 — 충돌 시 롤백 후 409.
+      let party;
+      try {
+        party = await db.transaction(async (tx) => {
+          for (const ct of consentTypes) {
+            await tx.insert(consents).values({
+              userId, caseId, consentType: ct, version: CONSENT_VERSION, agreed: true, ipAddress: ip, userAgent: ua,
+            });
+          }
+          const [p] = await tx.insert(caseParties).values({
+            caseId,
+            userId,
+            name: name || (req.user as any).name,
+            phone: phone || (req.user as any).phone,
+            email: email || (req.user as any).email,
+            address,
+            residentNumber: rrnEnc,
+            damageAmount: damageAmountVal,
+            damageDescription,
+          }).onConflictDoNothing({ target: [caseParties.caseId, caseParties.userId] }).returning();
+          if (!p) { const e: any = new Error("duplicate party"); e.dup = true; throw e; }
+          await tx.update(cases).set({ currentCount: sql`${cases.currentCount} + 1` }).where(eq(cases.id, caseId));
+          return p;
+        });
+      } catch (e: any) {
+        if (e?.dup) return res.status(409).json({ error: "이미 참여한 사건입니다." });
+        throw e;
+      }
 
       // 단체소송 참여 신청 → 운영자(허왕) 알림(SMS+이메일). 멱등(admin_join:casePartyId). 응답 차단 안 함.
       void notifyAdminEvent({
@@ -922,7 +990,7 @@ export function registerRoutes(app: Express) {
         ],
       }).catch(() => {});
 
-      return res.status(201).json(party);
+      return res.status(201).json(stripPII(party));
     } catch (err) {
       console.error("참여 신청 오류:", err);
       return res.status(500).json({ error: "서버 오류" });
@@ -960,7 +1028,7 @@ export function registerRoutes(app: Express) {
         .where(and(eq(caseParties.caseId, caseId), eq(caseParties.userId, userId)))
         .limit(1);
       if (!party) return res.status(404).json({ error: "참여 정보가 없습니다." });
-      return res.json(party);
+      return res.json(stripPII(party));
     } catch (err) {
       return res.status(500).json({ error: "서버 오류" });
     }
@@ -2054,7 +2122,7 @@ export function registerRoutes(app: Express) {
         notes,
       }).returning();
 
-      return res.status(201).json(created);
+      return res.status(201).json(stripPII(created));
     } catch (err) {
       console.error("상대방 추가 오류:", err);
       return res.status(500).json({ error: "서버 오류" });
@@ -2086,7 +2154,7 @@ export function registerRoutes(app: Express) {
         .set(updateData)
         .where(eq(defendants.id, parseInt(req.params.id)))
         .returning();
-      return res.json(updated);
+      return res.json(stripPII(updated));
     } catch (err) {
       return res.status(500).json({ error: "서버 오류" });
     }
@@ -2139,7 +2207,7 @@ export function registerRoutes(app: Express) {
         inserted.push(created);
       }
 
-      return res.status(201).json({ count: inserted.length, defendants: inserted });
+      return res.status(201).json({ count: inserted.length, defendants: inserted.map(stripPII) });
     } catch (err) {
       console.error("일괄 등록 오류:", err);
       return res.status(500).json({ error: "서버 오류" });

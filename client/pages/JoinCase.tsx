@@ -29,6 +29,8 @@ export default function JoinCase() {
   });
 
   const update = (field: string, value: string) => setForm((prev) => ({ ...prev, [field]: value }));
+  // 보조 검증/포맷(정본은 서버). 주민번호=6-7 하이픈, 피해금액=숫자만 저장.
+  const fmtRrn = (v: string) => { const d = v.replace(/\D/g, "").slice(0, 13); return d.length > 6 ? `${d.slice(0, 6)}-${d.slice(6)}` : d; };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,13 +41,10 @@ export default function JoinCase() {
       setError("주민등록번호(고유식별정보) 수집에는 별도 동의가 필요합니다. 동의하지 않으시려면 주민등록번호를 비워두세요.");
       return;
     }
-    // 동의 기록 저장 후 참여 신청 — 주민등록번호는 일반 개인정보와 별도 동의유형으로 분리 기록(개인정보 보호법 제24조의2)
-    const consentTypes = ["pii_collection"];
-    if (hasResident && residentConsent) consentTypes.push("unique_id_collection");
-    try {
-      await apiRequest("/api/consent", { method: "POST", body: JSON.stringify({ consentTypes }) });
-    } catch { setError("동의 기록 저장에 실패했습니다. 다시 시도해주세요."); return; }
-    joinMutation.mutate(form);
+    // 동의 플래그를 참여 신청에 함께 실어 서버가 한 트랜잭션으로 기록(개인정보 보호법 제24조의2·사건 단위).
+    const consents = ["pii_collection"];
+    if (hasResident && residentConsent) consents.push("unique_id_collection");
+    joinMutation.mutate({ ...form, consents });
   };
 
   return (
@@ -81,13 +80,13 @@ export default function JoinCase() {
 
         <div>
           <label htmlFor="join-resident-number" className="label">주민등록번호</label>
-          <input id="join-resident-number" name="residentNumber" type="text" autoComplete="off" spellCheck={false} className="input" value={form.residentNumber} onChange={(e) => update("residentNumber", e.target.value)} placeholder="000000-0000000" />
+          <input id="join-resident-number" name="residentNumber" type="text" inputMode="numeric" autoComplete="off" spellCheck={false} maxLength={14} className="input" value={form.residentNumber} onChange={(e) => update("residentNumber", fmtRrn(e.target.value))} placeholder="000000-0000000" />
           <p className="text-xs text-gray-400 mt-1">소장 작성에 필요합니다. 암호화 저장됩니다.</p>
         </div>
 
         <div>
           <label htmlFor="join-damage-amount" className="label">피해 금액 (원)</label>
-          <input id="join-damage-amount" name="damageAmount" type="number" inputMode="numeric" className="input" value={form.damageAmount} onChange={(e) => update("damageAmount", e.target.value)} placeholder="피해액을 입력하세요" />
+          <input id="join-damage-amount" name="damageAmount" type="text" inputMode="numeric" className="input" value={form.damageAmount ? Number(form.damageAmount).toLocaleString() : ""} onChange={(e) => update("damageAmount", e.target.value.replace(/\D/g, "").slice(0, 15))} placeholder="피해액을 입력하세요" />
         </div>
 
         <div>

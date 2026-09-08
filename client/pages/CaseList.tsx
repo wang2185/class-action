@@ -43,7 +43,16 @@ export default function CaseList() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-20 text-gray-400">불러오는 중…</div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="card animate-pulse">
+              <div className="h-5 w-20 bg-gray-100 rounded-full mb-3" />
+              <div className="h-5 w-3/4 bg-gray-100 rounded mb-2" />
+              <div className="h-4 w-full bg-gray-100 rounded mb-4" />
+              <div className="h-2 w-full bg-gray-100 rounded-full" />
+            </div>
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-gray-400">해당 조건의 사건이 없습니다.</div>
       ) : (
@@ -61,12 +70,25 @@ export default function CaseList() {
                   <span>피고</span>
                   <span className="font-medium">{c.defendant || "-"}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>참여자</span>
-                  <span className="font-medium text-primary-500 tabular-nums">
-                    {c.currentCount}{c.targetCount ? ` / ${c.targetCount}` : ""}명
-                  </span>
-                </div>
+                {(() => {
+                  const cur = c.currentCount || 0, tgt = c.targetCount || 0;
+                  const pct = tgt ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+                  const dday = c.recruitEndDate ? Math.ceil((new Date(c.recruitEndDate).getTime() - Date.now()) / 86400000) : null;
+                  return (
+                    <div>
+                      <div className="flex justify-between items-baseline mb-1">
+                        <span className="font-bold text-primary-600 tabular-nums">{cur}{tgt ? ` / ${tgt}` : ""}명</span>
+                        {tgt ? <span className="text-xs text-gray-500">목표까지 {Math.max(0, tgt - cur)}명</span> : <span className="text-xs text-gray-400">모집 중</span>}
+                      </div>
+                      {tgt > 0 && (
+                        <div className="h-2 rounded-full bg-gray-100 overflow-hidden" role="progressbar" aria-valuenow={cur} aria-valuemin={0} aria-valuemax={tgt} aria-label="모집 진행률">
+                          <div className="h-full bg-primary-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                      )}
+                      {dday !== null && dday >= 0 && <p className="text-xs text-gray-400 mt-1">모집 마감 D-{dday}</p>}
+                    </div>
+                  );
+                })()}
                 <div className="flex justify-between">
                   <span>착수금</span>
                   <span className="font-bold tabular-nums">{(c.retainerFee || 0).toLocaleString()}원</span>

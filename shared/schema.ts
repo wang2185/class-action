@@ -4,6 +4,7 @@ import {
   varchar,
   text,
   integer,
+  bigint,
   boolean,
   timestamp,
   json,
@@ -78,7 +79,7 @@ export const caseParties = pgTable("case_parties", {
   email: varchar("email", { length: 255 }),
   address: text("address"),
   residentNumber: varchar("resident_number", { length: 100 }), // 암호화 저장
-  damageAmount: integer("damage_amount"), // 피해 금액
+  damageAmount: bigint("damage_amount", { mode: "number" }), // 피해 금액(bigint — 21억 초과 집단소송 대비)
   damageDescription: text("damage_description"), // 피해 내용
   status: varchar("status", { length: 50 }).notNull().default("registered"),
   // registered → contracted → paid → verified
@@ -276,6 +277,7 @@ export const defendantDocuments = pgTable("defendant_documents", {
 export const consents = pgTable("consents", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
+  caseId: integer("case_id"), // 사건 귀속(사건 참여 시 기록). null=계정 단위(가입 동의 등)
   consentType: varchar("consent_type", { length: 50 }).notNull(),
   // privacy_policy, pii_collection, unique_id_collection(주민등록번호 별도동의·§24의2), third_party_sharing, marketing, service_terms
   version: varchar("version", { length: 20 }).notNull().default("1.0"),
