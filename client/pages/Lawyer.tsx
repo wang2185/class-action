@@ -17,6 +17,7 @@ const EDU = [
 const CERT = [
   "제50회 사법시험 합격",
   "제40기 사법연수원 수료",
+  "변리사 등록",
 ];
 
 const FIELDS = [
@@ -47,10 +48,10 @@ export default function Lawyer() {
                 대표변호사
               </span>
               <h1 className="text-3xl md:text-4xl font-extrabold text-ink mb-2">허왕 변호사</h1>
-              <p className="text-lg text-primary-600 font-semibold mb-4">법무법인 윈스</p>
+              <p className="text-lg text-primary-600 font-semibold mb-4">법무법인 윈스 대표변호사 · 변호사 · 변리사</p>
               <p className="text-ink-muted leading-relaxed max-w-xl">
                 집단·공동소송을 직접 설계하고 수행합니다. 흩어진 피해를 하나로 모아
-                가장 효율적인 방법으로 권리를 되찾는 것을 목표로 합니다.
+                효율적인 방법으로 권리를 되찾는 것을 목표로 합니다.
               </p>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
@@ -95,6 +95,17 @@ function OwnerRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function NotFound() {
+  return (
+    <div className="max-w-lg mx-auto px-4 py-24 text-center">
+      <p className="text-5xl font-bold text-primary-600 mb-3">404</p>
+      <h1 className="text-xl font-bold mb-2">페이지를 찾을 수 없습니다</h1>
+      <p className="text-gray-500 mb-6">주소가 바뀌었거나 삭제된 페이지일 수 있습니다.</p>
+      <Link to="/" className="btn-primary">홈으로</Link>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -169,6 +180,7 @@ export default function App() {
               <Route path="/admin/cases/:id/update" element={<AdminRoute><AdminCaseUpdate /></AdminRoute>} />
               <Route path="/admin/cases/:id/defendants" element={<AdminRoute><AdminDefendants /></AdminRoute>} />
               <Route path="/admin/cases/:id/package" element={<LawyerRoute><CasePackage /></LawyerRoute>} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
           <Footer />

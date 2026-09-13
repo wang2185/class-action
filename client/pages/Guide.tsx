@@ -25,7 +25,7 @@ export default function Guide() {
           </h1>
           <p className="text-lg text-ink-muted leading-relaxed max-w-2xl mx-auto">
             참여 신청 · 자료 제출 · 수임계약 · 결제 · 진행 알림을 온라인으로 끝냅니다.<br className="hidden md:block" />
-            허왕 변호사와 법무법인 윈스가 끝까지 함께합니다.
+            법무법인 윈스 대표변호사 허왕이 사건을 직접 검토하고 끝까지 수행합니다.
           </p>
         </div>
       </section>
