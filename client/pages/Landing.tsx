@@ -34,7 +34,7 @@ export default function Landing() {
             </h1>
             <p className="text-lg md:text-xl text-ink-muted mb-9 leading-relaxed animate-fade-up" style={{ animationDelay: "140ms" }}>
               참여 신청부터 자료 제출·수임계약·결제, 소송 진행 알림까지 한곳에서.<br className="hidden md:block" />
-              법무법인 윈스 대표변호사 허왕이 사건을 직접 검토하고 끝까지 수행합니다.
+              법무법인 윈스 허왕 변호사가 사건을 직접 검토하고 끝까지 수행합니다.
             </p>
             <div className="flex flex-wrap gap-3 animate-fade-up" style={{ animationDelay: "210ms" }}>
               <Link to="/cases" className="btn-accent text-base px-7 py-3.5">진행 중인 사건 보기</Link>
@@ -111,7 +111,7 @@ export default function Landing() {
       {/* Day Lawyer / WillSave 홍보 */}
       <section className="bg-primary-50 py-16">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-2xl font-bold text-center mb-8">허왕 대표변호사가 만든 다른 서비스</h2>
+          <h2 className="text-2xl font-bold text-center mb-8">허왕 변호사가 만든 다른 서비스</h2>
           <div className="grid md:grid-cols-2 gap-8">
             <a href="https://day.lawyer" target="_blank" rel="noopener noreferrer" className="promo-banner flex items-center gap-6 hover:scale-[1.02] transition-transform">
               <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">

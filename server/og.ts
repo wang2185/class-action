@@ -36,7 +36,7 @@ export async function buildCaseOg(id: number): Promise<CaseOg | null> {
     const [c] = await db.select().from(cases).where(eq(cases.id, id)).limit(1);
     if (c) {
       const title = `${c.title} | 로사이어티 집단소송`;
-      const description = (c.summary || c.description || "로사이어티 집단소송 — 같은 사건, 함께 해결. 법무법인 윈스 허왕 대표변호사")
+      const description = (c.summary || c.description || "로사이어티 집단소송 — 같은 사건, 함께 해결. 법무법인 윈스 허왕 변호사")
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, 150);

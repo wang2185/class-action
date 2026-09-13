@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 const CAREER = [
-  "법무법인 윈스 대표변호사",
+  "법무법인 윈스 변호사",
   "대한변호사협회 IT·블록체인 특별위원회 위원",
   "과학기술정보통신부 스타트업 법률자문단",
   "데이로이어(Day Lawyer) 창업자",
@@ -45,10 +45,10 @@ export default function Lawyer() {
             />
             <div className="text-center md:text-left">
               <span className="inline-flex items-center gap-2 bg-accent-50 text-accent-700 text-sm font-semibold px-3.5 py-1.5 rounded-full mb-4">
-                대표변호사
+                변호사
               </span>
               <h1 className="text-3xl md:text-4xl font-extrabold text-ink mb-2">허왕 변호사</h1>
-              <p className="text-lg text-primary-600 font-semibold mb-4">법무법인 윈스 대표변호사 · 변호사 · 변리사</p>
+              <p className="text-lg text-primary-600 font-semibold mb-4">법무법인 윈스 변호사</p>
               <p className="text-ink-muted leading-relaxed max-w-xl">
                 집단·공동소송을 직접 설계하고 수행합니다. 흩어진 피해를 하나로 모아
                 효율적인 방법으로 권리를 되찾는 것을 목표로 합니다.

@@ -15,7 +15,7 @@ export default function Privacy() {
 
         <div className="bg-gray-50 border rounded-lg p-5 mb-6 text-sm space-y-1">
           <p className="font-semibold text-gray-900">운영자(개인정보처리자) 정보</p>
-          <p>· 법인명: 법무법인 윈스 (대표변호사 허왕·박형일)</p>
+          <p>· 법인명: 법무법인 윈스 (허왕 변호사·박형일)</p>
           <p>· 사업자등록번호: 557-86-00970 · 통신판매업 신고: 제2025-서울강남-00127호</p>
           <p>· 주소: 서울특별시 강남구 삼성로 566, 2층 (삼성동, 빌딩엠) 06163</p>
           <p>· 대표전화: 02-556-6800 · FAX: 02-556-6809</p>
@@ -216,7 +216,7 @@ export default function Privacy() {
         </section>
 
         <section className="text-sm text-gray-500 border-t pt-4">
-          <p>법무법인 윈스 (대표변호사 허왕·박형일) · 사업자등록번호 557-86-00970 · 통신판매업 신고 제2025-서울강남-00127호 · 서울특별시 강남구 삼성로 566, 2층 · TEL 02-556-6800 / FAX 02-556-6809</p>
+          <p>법무법인 윈스 (허왕 변호사·박형일) · 사업자등록번호 557-86-00970 · 통신판매업 신고 제2025-서울강남-00127호 · 서울특별시 강남구 삼성로 566, 2층 · TEL 02-556-6800 / FAX 02-556-6809</p>
           <p className="mt-2">시행일자: 2026년 7월 1일 (버전 2.1) · 로사이어티 집단소송 | 공식 URL: https://class.lawciety.com</p>
         </section>
       </div>

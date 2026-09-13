@@ -11,7 +11,7 @@ import type { CaseOg } from "./og";
 export const BASE = (process.env.PUBLIC_BASE_URL || process.env.CORS_ORIGIN || "https://class.lawciety.com").replace(/\/$/, "");
 const SITE = "로사이어티 집단소송";
 const HOME_DESC =
-  "같은 피해를 입은 여러 사람이 함께하는 집단·공동소송 플랫폼. 법무법인 윈스 대표변호사 허왕이 사건을 직접 검토·수행합니다. 진행 중인 집단소송 참여부터 새 사건 요청까지 한곳에서.";
+  "같은 피해를 입은 여러 사람이 함께하는 집단·공동소송 플랫폼. 법무법인 윈스 허왕 변호사가 사건을 직접 검토·수행합니다. 진행 중인 집단소송 참여부터 새 사건 요청까지 한곳에서.";
 export { HOME_DESC };
 
 function escAttr(s: unknown): string {
@@ -73,7 +73,7 @@ const FAQ: { q: string; a: string }[] = [
   { q: "이기면 돈을 돌려받을 수 있나요?", a: "사건의 성패와 실제 회수 가능 금액은 사실관계와 증거, 상대방의 자력 등에 따라 달라지며, 어떠한 결과도 보장되지 않습니다. 허왕 변호사가 제출된 자료를 검토해 진행 가능성과 예상되는 절차를 솔직하게 안내드립니다." },
   { q: "중간에 참여를 그만둘 수 있나요?", a: "참여 철회와 환불은 이용약관과 수임계약이 정한 절차에 따릅니다. 소 제기 전후에 따라 처리 방법이 다를 수 있어, 철회를 원하시면 먼저 안내를 받으시길 권합니다." },
   { q: "결제는 안전한가요?", a: "착수금 결제는 NicePay 안전 결제창을 통해 이루어지며, 카드 정보는 플랫폼에 저장되지 않습니다. 결제 후 영수 내역은 내 사건에서 확인하실 수 있습니다." },
-  { q: "변호사가 직접 사건을 맡나요?", a: "법무법인 윈스의 허왕 대표변호사(변호사·변리사)가 직접 자료를 검토하고 소장·준비서면 작성과 재판 수행을 담당합니다." },
+  { q: "변호사가 직접 사건을 맡나요?", a: "법무법인 윈스의 허왕 변호사가 직접 자료를 검토하고 소장·준비서면 작성과 재판 수행을 담당합니다." },
   { q: "등록된 사건이 없는데 새로 만들 수 있나요?", a: "네. 사건 요청 페이지에서 피해 내용을 알려주시면 허왕 변호사가 검토한 뒤, 같은 피해자를 모아 새로운 사건을 개설할 수 있는지 안내드립니다." },
 ];
 export function faqLd() {
@@ -136,10 +136,10 @@ export function injectSeo(html: string, seo: Seo): string {
 
 // ── 정적 라우트 메타 ──
 const ROUTES: Record<string, () => Seo> = {
-  "/": () => ({ title: "로사이어티 집단소송 | 법무법인 윈스 허왕 대표변호사", description: HOME_DESC, path: "/", jsonLd: [orgLd(), websiteLd()] }),
-  "/cases": () => ({ title: "진행 중인 집단소송 — 사건 참여 | 로사이어티", description: "현재 참여 가능한 집단·공동소송 목록입니다. 같은 피해를 입었다면 함께 참여해 비용과 부담을 나누세요. 법무법인 윈스 대표변호사 허왕이 직접 수행합니다.", path: "/cases", jsonLd: [breadcrumbLd([crumbHome, { name: "사건 참여", path: "/cases" }])] }),
+  "/": () => ({ title: "로사이어티 집단소송 | 법무법인 윈스 허왕 변호사", description: HOME_DESC, path: "/", jsonLd: [orgLd(), websiteLd()] }),
+  "/cases": () => ({ title: "진행 중인 집단소송 — 사건 참여 | 로사이어티", description: "현재 참여 가능한 집단·공동소송 목록입니다. 같은 피해를 입었다면 함께 참여해 비용과 부담을 나누세요. 법무법인 윈스 허왕 변호사가 직접 수행합니다.", path: "/cases", jsonLd: [breadcrumbLd([crumbHome, { name: "사건 참여", path: "/cases" }])] }),
   "/guide": () => ({ title: "이용 안내 — 집단소송 참여 방법 | 로사이어티", description: "사건 확인부터 참여 신청, 자료 제출, 착수금 결제, 진행 상황 확인까지. 로사이어티 집단소송 이용 절차를 단계별로 안내합니다.", path: "/guide", jsonLd: [breadcrumbLd([crumbHome, { name: "사용 안내", path: "/guide" }])] }),
-  "/lawyer": () => ({ title: "허왕 대표변호사 — 법무법인 윈스 | 로사이어티 집단소송", description: "집단·공동소송을 직접 수행하는 법무법인 윈스 대표변호사 허왕(변호사·변리사). 약력과 전문 분야를 소개합니다.", path: "/lawyer", jsonLd: [personLd(), breadcrumbLd([crumbHome, { name: "변호사", path: "/lawyer" }])] }),
+  "/lawyer": () => ({ title: "허왕 변호사 — 법무법인 윈스 | 로사이어티 집단소송", description: "집단·공동소송을 직접 수행하는 법무법인 윈스 허왕 변호사. 약력과 전문 분야를 소개합니다.", path: "/lawyer", jsonLd: [personLd(), breadcrumbLd([crumbHome, { name: "변호사", path: "/lawyer" }])] }),
   "/request": () => ({ title: "사건 요청 — 새 집단소송 제안 | 로사이어티", description: "등록된 사건이 없어도 괜찮습니다. 피해 내용을 알려주시면 허왕 변호사가 검토해 같은 피해자를 모아 새 집단소송 개설이 가능한지 안내합니다.", path: "/request", jsonLd: [breadcrumbLd([crumbHome, { name: "사건 요청", path: "/request" }])] }),
   "/faq": () => ({ title: "자주 묻는 질문 | 로사이어티 집단소송", description: "비용, 참여 자격, 개인정보 보호, 환불, 결제 안전성 등 집단소송 참여 전 가장 많이 묻는 질문을 모았습니다.", path: "/faq", jsonLd: [faqLd(), breadcrumbLd([crumbHome, { name: "자주 묻는 질문", path: "/faq" }])] }),
   "/privacy": () => ({ title: "개인정보처리방침 | 로사이어티 집단소송", description: "로사이어티 집단소송의 개인정보 수집·이용·보관·파기 및 이용자 권리에 관한 처리방침입니다.", path: "/privacy", robots: "index,follow", jsonLd: [breadcrumbLd([crumbHome, { name: "개인정보처리방침", path: "/privacy" }])] }),
@@ -158,7 +158,7 @@ export function getRouteSeo(path: string): Seo {
     return { title: "로사이어티 집단소송", description: HOME_DESC, path: clean, robots: "noindex,follow" };
   }
   // 알 수 없는 경로: 홈 메타 + noindex(중복 색인 방지)
-  return { title: "로사이어티 집단소송 | 법무법인 윈스 허왕 대표변호사", description: HOME_DESC, path: clean, robots: "noindex,follow" };
+  return { title: "로사이어티 집단소송 | 법무법인 윈스 허왕 변호사", description: HOME_DESC, path: clean, robots: "noindex,follow" };
 }
 
 // 사건 상세 Seo (buildCaseOg 결과 + 사건 구조화데이터)
@@ -173,10 +173,10 @@ export function caseSeo(og: CaseOg, id: number): Seo {
 // ── robots.txt / sitemap.xml / llms.txt ──
 const LLMS_TXT = `# 로사이어티 집단소송 (Lawciety)
 
-> 같은 피해를 입은 여러 사람이 함께하는 집단·공동소송 플랫폼. 법무법인 윈스 대표변호사 허왕(변호사·변리사)이 사건을 직접 검토하고 소장·준비서면 작성과 재판 수행을 담당합니다. 진행 중인 집단소송 참여와 새 사건 요청을 한곳에서 처리합니다.
+> 같은 피해를 입은 여러 사람이 함께하는 집단·공동소송 플랫폼. 법무법인 윈스 허왕 변호사가 사건을 직접 검토하고 소장·준비서면 작성과 재판 수행을 담당합니다. 진행 중인 집단소송 참여와 새 사건 요청을 한곳에서 처리합니다.
 
-운영: 법무법인 윈스 (대표변호사 허왕·박형일) · 서울특별시 강남구 삼성로 566 · 02-556-6800
-담당변호사: 허왕 대표변호사 (변호사·변리사)
+운영: 법무법인 윈스 (허왕 변호사·박형일) · 서울특별시 강남구 삼성로 566 · 02-556-6800
+담당변호사: 허왕 변호사 
 사이트: ${BASE}
 
 ## 핵심 페이지
@@ -195,7 +195,7 @@ const LLMS_TXT = `# 로사이어티 집단소송 (Lawciety)
 - 비용은 사건별 착수금이 사전 고지되며, 성공보수는 수임계약·약관에 따릅니다.
 - 민감정보(주민등록번호 등)는 AES-256으로 암호화 저장되고 접근은 감사 로그로 관리됩니다.
 
-## 관련 서비스 (허왕 대표변호사)
+## 관련 서비스 (허왕 변호사)
 - [데이로이어](https://day.lawyer): 법률 상담 구독
 - [윌세이브](https://willsave.co.kr): 유언장 작성·보관
 `;
