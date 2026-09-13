@@ -196,7 +196,7 @@ export async function sendEmail(to: string, subject: string, html: string, ctxIn
     if (isM365Configured()) {
       providerMsgId = await sendEmailM365(to, subject, html); // M365 우선
     } else {
-      const info = await getTransporter().sendMail({ from: process.env.SMTP_FROM || "로사이어티 집단소송 <noreply@winslaw.co.kr>", to, subject, html });
+      const info = await getTransporter().sendMail({ from: process.env.SMTP_FROM || "로사이어티 집단소송 <noreply@lawciety.com>", to, subject, html });
       providerMsgId = info.messageId;
     }
     await record("email", to, ctx, "sent", providerMsgId);
