@@ -42,7 +42,7 @@ export default function Footer() {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="lg:col-span-2">
             <h3 className="text-white font-bold mb-1">로사이어티 <span className="text-gray-400 font-normal">집단소송</span></h3>
-            <p className="text-sm text-gray-500 mb-3">법무법인 윈스 · 허왕 변호사</p>
+            <p className="text-sm text-gray-500 mb-3">운영 법무법인 윈스 · 담당변호사 허왕 대표변호사</p>
             <p className="text-sm leading-relaxed">
               법무법인 윈스 | 대표변호사 허왕, 박형일<br />
               서울특별시 강남구 삼성로 566, 2층 (삼성동, 빌딩엠) 06163<br />
@@ -62,7 +62,7 @@ export default function Footer() {
             </div>
           </div>
           <div>
-            <h3 className="text-white font-bold mb-3">윈스의 다른 서비스</h3>
+            <h3 className="text-white font-bold mb-3">허왕 대표변호사의 다른 서비스</h3>
             <div className="space-y-2 text-sm">
               <a href="https://day.lawyer" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">법률 상담 구독</a>
               <a href="https://willsave.co.kr" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">유언장 서비스</a>

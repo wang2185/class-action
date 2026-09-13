@@ -8,6 +8,7 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import { setupAuth } from "./auth";
 import { registerRoutes } from "./routes";
+import { registerServiceAdminRoutes } from "./serviceAdmin";
 import { buildCaseOg } from "./og";
 import { registerSeoRoutes, getRouteSeo, caseSeo, injectSeo } from "./seo";
 
@@ -62,11 +63,22 @@ setupAuth(app);
 // API Routes
 registerRoutes(app);
 
+// hq.wanghuh.com 포털용 관리 API(Bearer 토큰) — 세션/CSRF와 분리
+registerServiceAdminRoutes(app);
+
 // SEO/AEO/GEO: robots.txt · sitemap.xml · llms.txt (SPA catch-all·static 보다 먼저 등록)
 registerSeoRoutes(app);
 
-// Static files (uploaded evidence)
-app.use("/uploads", express.static(path.resolve("public/uploads")));
+// ⛔ 업로드물(증거·경과 첨부)은 정적 서빙하지 않는다.
+// 예전에는 /uploads 를 express.static 으로 열어 두었으나 권한 검사가 전혀 없었다.
+// 같은 패턴을 쓰던 lifesave 에서 의뢰인 서류가 무인증 공개되는 사고가 확인되어(2026-08-10)
+// 여기서도 선제 차단한다. 업로드는 전부 UPLOAD_DIR/evidence/ 아래에 저장되므로
+// 이 마운트로 실제 파일이 열리지도 않았다(클라이언트 링크가 basename 만 붙여 이미 깨져 있었음).
+// 첨부 다운로드를 되살릴 때는 반드시 세션·사건 권한을 검사하는 API 라우트로 만들 것.
+// SPA catch-all 이 /uploads/* 에 앱 셸(200 HTML)을 돌려주면 "아직 살아있다"로 오독되므로 404 를 준다.
+app.all(/^\/uploads(\/|$)/, (_req, res) => {
+  res.status(404).json({ error: "찾을 수 없습니다." });
+});
 
 // SPA - serve built frontend
 if (isProd) {

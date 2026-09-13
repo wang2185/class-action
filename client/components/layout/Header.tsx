@@ -12,7 +12,7 @@ export default function Header() {
         <Link to="/" className="flex items-center" aria-label="로사이어티 집단소송 홈">
           <img
             src="/brand/logo-header.png"
-            alt="로사이어티 집단소송 · 법무법인 윈스"
+            alt="로사이어티 집단소송 · 법무법인 윈스 허왕 대표변호사"
             width={1467}
             height={200}
             className="h-8 w-auto"

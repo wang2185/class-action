@@ -106,7 +106,7 @@ export default function CaseProgress() {
                         <h3 className="font-semibold">{u.title}</h3>
                         <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{u.content}</p>
                         {u.attachmentName && (
-                          <a href={`/uploads/${u.attachmentPath?.split("/").pop()}`} target="_blank" rel="noopener noreferrer"
+                          <a href={`/api/cases/${id}/updates/${u.id}/attachment`} target="_blank" rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-sm text-primary-500 mt-2 hover:underline">
                             첨부: {u.attachmentName}
                           </a>

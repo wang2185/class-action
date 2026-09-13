@@ -11,6 +11,10 @@ export default defineConfig({
     },
   },
   root: ".",
+  // ⛔ publicDir 을 "public" 으로 두면 안 된다. public/uploads 가 업로드물(증거·첨부)
+  // 실저장소라, 빌드할 때마다 그 내용이 dist/public 으로 복사되어 정적 서빙 대상이 된다.
+  // 배포용 정적 자산은 static/ 에만 둔다.
+  publicDir: "static",
   build: {
     outDir: "dist/public",
     emptyOutDir: true,
