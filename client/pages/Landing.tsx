@@ -119,7 +119,7 @@ export default function Landing() {
               </div>
               <div>
                 <h3 className="text-xl font-bold mb-1">데이로이어 (Day Lawyer)</h3>
-                <p className="text-white/80">월 정액 법률 상담 구독 — 방문·전화·이메일 상담을 합리적 가격으로 이용하세요.</p>
+                <p className="text-white/80">월 정액 법률 상담 구독 — 텍스트 상담 기본, 필요 시 화상·방문 상담까지.</p>
                 <span className="inline-block mt-2 text-sm bg-white/20 rounded-full px-3 py-1">day.lawyer 방문하기 →</span>
               </div>
             </a>

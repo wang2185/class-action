@@ -17,7 +17,7 @@ export default function Footer() {
             </div>
             <div>
               <div className="font-bold text-lg">데이로이어 (Day Lawyer)</div>
-              <div className="text-sm text-white/80">법률 상담 구독 서비스 — 방문·전화·이메일 상담을 월정액으로</div>
+              <div className="text-sm text-white/80">법률 상담 구독 서비스 — 텍스트 상담 기본, 필요 시 화상·방문</div>
             </div>
           </a>
           <a
