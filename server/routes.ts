@@ -25,6 +25,7 @@ import {
   requestPaymentApproval, completePayment, generatePaymentFormHTML, cancelPayment,
   isNicePayConfigured, isKeyinConfigured,
   registerBillingKey, approveBillingPayment, removeBillingKey,
+  NICEPAY_FORM_CSP,
 } from "./nicepay";
 
 // 공개 절대 URL (결제/진행 링크)
@@ -272,17 +273,20 @@ function stripPII(obj: any): any {
 // 동의 허용 타입(클라이언트 위변조 방지). /api/consent·join·withdraw 공용.
 const CONSENT_ALLOWED = ["service_terms", "pii_collection", "unique_id_collection", "marketing", "third_party_sharing", "privacy_policy"];
 
-// 주민등록번호 검증 — 13자리 + 월/일 범위 + 체크섬. 통과 시 하이픈 제거한 13자리 반환, 실패 시 null.
-const RRN_WEIGHTS = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5];
+// 주민등록번호 검증 — 13자리 + 성별·세기코드 + 실제 달력일자(윤년 포함). 통과 시 하이픈 제거한 13자리 반환, 실패 시 null.
+// ⚠ 체크섬은 게이트로 쓰지 않는다: 2020.10.5 부여체계 개편으로 뒷 7자리가 임의번호가 되어(재발급·영유아 등) 정상번호도 체크섬이 안 맞을 수 있다.
+const RRN_CENTURY: Record<string, number> = { "1": 1900, "2": 1900, "5": 1900, "6": 1900, "3": 2000, "4": 2000, "7": 2000, "8": 2000, "9": 1800, "0": 1800 };
 function validateRrn(raw: string): string | null {
   const d = raw.replace(/\D/g, "");
   if (!/^\d{13}$/.test(d)) return null;
-  const mm = Number(d.slice(2, 4)), dd = Number(d.slice(4, 6));
-  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
-  let sum = 0;
-  for (let i = 0; i < 12; i++) sum += Number(d[i]) * RRN_WEIGHTS[i];
-  const check = (11 - (sum % 11)) % 10;
-  return check === Number(d[12]) ? d : null;
+  const century = RRN_CENTURY[d[6]];
+  if (century === undefined) return null;
+  const yy = Number(d.slice(0, 2)), mm = Number(d.slice(2, 4)), dd = Number(d.slice(4, 6));
+  const year = century + yy;
+  if (mm < 1 || mm > 12) return null;
+  const dim = [31, (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (dd < 1 || dd > dim[mm - 1]) return null;
+  return d;
 }
 
 // 라우트 :id 파라미터 → 정수(없거나 비정수면 NaN). (req.params.id 는 string|string[] 타입)
@@ -894,7 +898,8 @@ export function registerRoutes(app: Express) {
   // requireConsent(계정단위 전역 게이트) 제거 — 이 라우트가 요청 본문 동의를 사건 단위로 직접 검증한다.
   app.post("/api/cases/:id/join", requireAuth, async (req, res) => {
     try {
-      const caseId = parseInt(req.params.id);
+      const caseId = Number(req.params.id);
+      if (!Number.isInteger(caseId) || caseId < 1) return res.status(400).json({ error: "잘못된 사건 번호입니다." });
       const userId = (req.user as any).id;
       const { name, phone, email, address, residentNumber, damageAmount, damageDescription } = req.body;
 
@@ -952,6 +957,10 @@ export function registerRoutes(app: Express) {
       let party;
       try {
         party = await db.transaction(async (tx) => {
+          // 사건 행 잠금 후 모집 상태 재확인(조회~커밋 사이 마감 경합 차단).
+          const [locked] = await tx.select({ status: cases.status }).from(cases).where(eq(cases.id, caseId)).for("update").limit(1);
+          if (!locked) { const e: any = new Error("case gone"); e.gone = true; throw e; }
+          if (locked.status !== "recruiting") { const e: any = new Error("not recruiting"); e.closed = true; throw e; }
           for (const ct of consentTypes) {
             await tx.insert(consents).values({
               userId, caseId, consentType: ct, version: CONSENT_VERSION, agreed: true, ipAddress: ip, userAgent: ua,
@@ -974,6 +983,8 @@ export function registerRoutes(app: Express) {
         });
       } catch (e: any) {
         if (e?.dup) return res.status(409).json({ error: "이미 참여한 사건입니다." });
+        if (e?.gone) return res.status(404).json({ error: "사건을 찾을 수 없습니다." });
+        if (e?.closed) return res.status(400).json({ error: "현재 모집 중이 아닌 사건입니다." });
         throw e;
       }
 
@@ -1277,6 +1288,7 @@ export function registerRoutes(app: Express) {
       });
 
       res.setHeader("Content-Type", "text/html; charset=euc-kr");
+      res.setHeader("Content-Security-Policy", NICEPAY_FORM_CSP);
       return res.send(html);
     } catch (err) {
       return res.status(500).send("오류가 발생했습니다.");
@@ -1492,6 +1504,7 @@ export function registerRoutes(app: Express) {
         merchantId: session.merchantId, ediDate: session.ediDate, signData: session.signData,
       });
       res.setHeader("Content-Type", "text/html; charset=euc-kr");
+      res.setHeader("Content-Security-Policy", NICEPAY_FORM_CSP);
       return res.send(html);
     } catch (err) {
       console.error("결제링크 처리 오류:", err);

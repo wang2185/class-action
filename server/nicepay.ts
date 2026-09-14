@@ -194,6 +194,12 @@ export async function completePayment(
   return session;
 }
 
+// NicePay 결제창은 web.nicepay.co.kr 로 cross-origin form POST + inline onload 자동제출.
+// 전역 helmet 기본 CSP(form-action 'self', script-src-attr 'none')가 이를 차단하므로,
+// 결제폼 응답에만 이 CSP로 덮어쓴다(금액·MID 등 폼 필드는 불변).
+export const NICEPAY_FORM_CSP =
+  "default-src 'none'; form-action https://web.nicepay.co.kr https://sandbox.nicepay.co.kr; script-src-attr 'unsafe-inline'; style-src-attr 'unsafe-inline'";
+
 export function generatePaymentFormHTML(params: {
   orderId: string; amount: number; goodsName: string;
   buyerName: string; buyerTel: string; buyerEmail: string;

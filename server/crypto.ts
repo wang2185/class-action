@@ -14,7 +14,7 @@ function getEncryptionKey(): Buffer {
 export function encryptPII(text: string): string {
   const key = getEncryptionKey();
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv, { authTagLength: 16 });
   let encrypted = cipher.update(text, "utf8", "hex");
   encrypted += cipher.final("hex");
   const authTag = cipher.getAuthTag().toString("hex");
@@ -28,9 +28,13 @@ export function decryptPII(encryptedText: string): string {
   if (!ivHex || !encrypted || !authTagHex) {
     throw new Error("Invalid encrypted format");
   }
+  // IV 12바이트·태그 16바이트 강제(짧은 태그 위조 차단).
+  if (!/^[0-9a-f]{24}$/i.test(ivHex) || !/^[0-9a-f]{32}$/i.test(authTagHex) || !/^[0-9a-f]*$/i.test(encrypted)) {
+    throw new Error("Invalid encrypted format");
+  }
   const iv = Buffer.from(ivHex, "hex");
   const authTag = Buffer.from(authTagHex, "hex");
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: 16 });
   decipher.setAuthTag(authTag);
   let decrypted = decipher.update(encrypted, "hex", "utf8");
   decrypted += decipher.final("utf8");
