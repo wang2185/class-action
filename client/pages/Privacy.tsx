@@ -63,6 +63,7 @@ export default function Privacy() {
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>회원 정보:</strong> 회원 탈퇴 시까지 (탈퇴 시 지체 없이 익명화 또는 파기, 수사·조사 진행 시 종료 시까지)</li>
             <li><strong>소송 관련 정보(주민등록번호·증거 포함):</strong> 사건 종결 후 5년 (수임사무 관련 분쟁 및 손해배상청구 대응 목적)</li>
+            <li><strong>수임에 관한 장부:</strong> 작성일부터 3년 (변호사법 제28조, 같은 법 시행령 제7조제1항)</li>
             <li><strong>결제 기록:</strong> 5년 (전자상거래법) / 소비자 불만·분쟁처리 기록: 3년</li>
             <li><strong>동의 기록:</strong> 회원 탈퇴 또는 동의 철회 후 3년 (개인정보 보호법 시행령)</li>
             <li><strong>접속기록:</strong> 2년 (「개인정보 보호법」 제29조 및 「개인정보의 안전성 확보조치 기준」 — 고유식별정보 처리 시스템은 2년 이상 보관)</li>
